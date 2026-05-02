@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { 
   Users, 
   School, 
@@ -31,6 +32,22 @@ export default function AdminDashboardScreen() {
   const [showAddStudent, setShowAddStudent] = useState(false);
   const [showAddTeacher, setShowAddTeacher] = useState(false);
   const [showAddCircular, setShowAddCircular] = useState(false);
+
+  const portalTarget = useMemo(() => {
+    if (typeof document === "undefined") return null;
+    return document.body;
+  }, []);
+
+  const anyDashboardModalOpen = showAddClass || showAddStudent || showAddTeacher || showAddCircular;
+
+  useEffect(() => {
+    if (!anyDashboardModalOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [anyDashboardModalOpen]);
 
   // Edit states
   const [editingItem, setEditingItem] = useState<{ type: "teacher" | "student" | "class"; id: string } | null>(null);
@@ -584,8 +601,8 @@ export default function AdminDashboardScreen() {
       {renderContent()}
 
       {/* Modals */}
-      {showAddClass && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
+      {portalTarget && showAddClass ? createPortal(
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center px-4 overflow-x-hidden">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={resetModals} />
           <div className="relative w-full max-w-md bg-white rounded-[40px] p-8 animate-scale-in shadow-2xl">
             <h3 className="text-2xl font-black text-gray-900 mb-8 text-center">
@@ -633,11 +650,12 @@ export default function AdminDashboardScreen() {
               <button onClick={handleAddClass} className="flex-1 bg-emerald-600 text-white font-black py-5 rounded-[24px] text-xs uppercase tracking-widest shadow-xl shadow-emerald-100">Create</button>
             </div>
           </div>
-        </div>
-      )}
+        </div>,
+        portalTarget
+      ) : null}
 
-      {showAddTeacher && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
+      {portalTarget && showAddTeacher ? createPortal(
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center px-4 overflow-x-hidden">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={resetModals} />
           <div className="relative w-full max-w-md bg-white rounded-[40px] p-8 animate-scale-in shadow-2xl max-h-[90vh] overflow-y-auto no-scrollbar">
             <h3 className="text-2xl font-black text-gray-900 mb-8 text-center">
@@ -691,11 +709,12 @@ export default function AdminDashboardScreen() {
               </button>
             </div>
           </div>
-        </div>
-      )}
+        </div>,
+        portalTarget
+      ) : null}
 
-      {showAddStudent && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
+      {portalTarget && showAddStudent ? createPortal(
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center px-4 overflow-x-hidden">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={resetModals} />
           <div className="relative w-full max-w-md bg-white rounded-[40px] p-8 animate-scale-in shadow-2xl max-h-[90vh] overflow-y-auto no-scrollbar">
             <h3 className="text-2xl font-black text-gray-900 mb-8 text-center">
@@ -762,11 +781,12 @@ export default function AdminDashboardScreen() {
               </button>
             </div>
           </div>
-        </div>
-      )}
+        </div>,
+        portalTarget
+      ) : null}
 
-      {showAddCircular && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
+      {portalTarget && showAddCircular ? createPortal(
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center px-4 overflow-x-hidden">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={resetModals} />
           <div className="relative w-full max-w-md bg-white rounded-[40px] p-8 animate-scale-in shadow-2xl max-h-[90vh] overflow-y-auto no-scrollbar">
             <h3 className="text-2xl font-black text-gray-900 mb-8 text-center">Draft Circular</h3>
@@ -807,8 +827,9 @@ export default function AdminDashboardScreen() {
               <button onClick={handleSendCircular} className="flex-1 bg-indigo-600 text-white font-black py-5 rounded-[24px] text-xs uppercase tracking-widest shadow-xl">Post Circular</button>
             </div>
           </div>
-        </div>
-      )}
+        </div>,
+        portalTarget
+      ) : null}
     </>
   );
 }

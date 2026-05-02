@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useApp, Student, ClassRoom, UserProfile, Circular } from "@/context/AppContext";
 import { 
   Users, 
@@ -29,6 +30,22 @@ export default function TeacherHomeScreen() {
   const [tempAttendance, setTempAttendance] = useState<Record<string, "present" | "absent">>({});
   const [hwForm, setHwForm] = useState({ subject: "", task: "", dueDate: "", priority: "Medium" as "High" | "Medium" | "Low" });
   const [sData, setSData] = useState({ name: "", username: "", password: "" });
+
+  const portalTarget = useMemo(() => {
+    if (typeof document === "undefined") return null;
+    return document.body;
+  }, []);
+
+  const anyTeacherOverlayOpen = showAddStudent || showHomework || showAttendance;
+
+  useEffect(() => {
+    if (!anyTeacherOverlayOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [anyTeacherOverlayOpen]);
 
   const teacherClasses = classes.filter(c => teacher.classIds?.includes(c.id));
   const selectedClass = classes.find(c => c.id === selectedClassId);
@@ -163,8 +180,9 @@ export default function TeacherHomeScreen() {
   }
 
   if (showAttendance && selectedClassId) {
-    return (
-      <div className="fixed inset-0 z-[200] bg-[#f5f5f7] flex flex-col animate-fade-in">
+    if (!portalTarget) return null;
+    return createPortal(
+      <div className="fixed inset-0 z-[1000] bg-[#f5f5f7] flex flex-col animate-fade-in overflow-x-hidden">
         <div className="bg-white px-5 pt-8 pb-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <button onClick={() => setShowAttendance(false)} className="w-10 h-10 bg-gray-50 rounded-2xl flex items-center justify-center">
@@ -209,7 +227,8 @@ export default function TeacherHomeScreen() {
             Confirm & Save
           </button>
         </div>
-      </div>
+      </div>,
+      portalTarget
     );
   }
 
@@ -326,8 +345,8 @@ export default function TeacherHomeScreen() {
       </div>
 
       {/* Add Student Modal */}
-      {showAddStudent && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
+      {portalTarget && showAddStudent ? createPortal(
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center px-4 overflow-x-hidden">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowAddStudent(false)} />
           <div className="relative w-full max-w-md bg-white rounded-[40px] p-8 animate-scale-in shadow-2xl">
             <h3 className="text-xl font-black text-gray-900 mb-6 text-center">New Student Account</h3>
@@ -365,12 +384,13 @@ export default function TeacherHomeScreen() {
               </button>
             </div>
           </div>
-        </div>
-      )}
+        </div>,
+        portalTarget
+      ) : null}
 
       {/* Homework Modal */}
-      {showHomework && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
+      {portalTarget && showHomework ? createPortal(
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center px-4 overflow-x-hidden">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowHomework(false)} />
           <div className="relative w-full max-w-md bg-white rounded-[40px] p-8 animate-scale-in shadow-2xl">
             <h3 className="text-xl font-black text-gray-900 mb-6 text-center">Assign Homework</h3>
@@ -408,8 +428,9 @@ export default function TeacherHomeScreen() {
               </button>
             </div>
           </div>
-        </div>
-      )}
+        </div>,
+        portalTarget
+      ) : null}
     </div>
   );
 }
