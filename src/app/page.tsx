@@ -4,6 +4,8 @@ import { AppProvider, useApp } from "@/context/AppContext";
 import LoginScreen from "@/components/screens/LoginScreen";
 import AppShell from "@/components/AppShell";
 
+import GlobalModal from "@/components/GlobalModal";
+
 function RootContent() {
   const { isLoggedIn, loading } = useApp();
   
@@ -18,7 +20,12 @@ function RootContent() {
     );
   }
   
-  return isLoggedIn ? <AppShell /> : <LoginScreen />;
+  return (
+    <>
+      {isLoggedIn ? <AppShell /> : <LoginScreen />}
+      <GlobalModal />
+    </>
+  );
 }
 
 export default function Home() {

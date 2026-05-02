@@ -12,7 +12,13 @@ export const metadata: Metadata = {
   title: "EduTrack – Student LMS",
   description: "A modern Learning Management System for students. Track attendance, homework, and academic progress.",
   keywords: ["LMS", "learning management system", "student app", "attendance tracker", "homework diary"],
-  viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no",
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({

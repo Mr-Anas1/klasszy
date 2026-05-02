@@ -12,11 +12,17 @@ import {
 import { useApp } from "@/context/AppContext";
 
 export default function HomeScreen() {
-  const { student, circulars, diaryEntries, attendanceRecords, setActiveTab } = useApp();
+  const { user, circulars, homework, attendance, setActiveTab, showAlert, setSelectedCircular } = useApp();
 
-  const presentCount = attendanceRecords.filter((r) => r.status === "present").length;
-  const attendancePct = Math.round((presentCount / attendanceRecords.length) * 100);
-  const pendingTasks = diaryEntries.filter((d) => d.status === "Pending").length;
+  // Calculate attendance from the new model (one doc per class per day)
+  // For a parent/student, we look at their own records. For simplicity in demo:
+  const latestAttendance = attendance[0]?.records || [];
+  const presentCount = latestAttendance.filter((r) => r.status === "present").length;
+  const attendancePct = latestAttendance.length > 0 
+    ? Math.round((presentCount / latestAttendance.length) * 100)
+    : 0;
+    
+  const pendingTasks = homework.length;
 
   const [dateStr, setDateStr] = React.useState<string>("");
 
@@ -82,76 +88,61 @@ export default function HomeScreen() {
       {/* Latest Circulars */}
       <div className="mt-8 animate-fade-slide-up delay-300">
         <div className="flex items-center justify-between mb-5">
-          <h3 className="text-lg font-black text-gray-900">Latest Circulars</h3>
-          <button className="text-[10px] font-black uppercase text-indigo-500 tracking-widest">
+          <h3 className="text-lg font-black text-gray-900">Official Circulars</h3>
+          <button 
+            onClick={() => setActiveTab("circulars")}
+            className="text-[10px] font-black uppercase text-indigo-500 tracking-widest"
+          >
             View All
           </button>
         </div>
 
         <div className="space-y-4">
-          {circulars.slice(0, 2).map((c) => (
+          {circulars.filter(c => c.targetAudience !== "teachers").slice(0, 3).map((c) => (
             <div
               key={c.id}
+              onClick={() => { setSelectedCircular(c); setActiveTab("view_circular"); }}
               className="bg-white border border-gray-100 rounded-[32px] p-5 flex items-center gap-5 shadow-sm active:scale-[0.99] transition-all cursor-pointer group hover:shadow-md hover:border-indigo-100"
             >
               <div
-                className={`${c.color} w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-indigo-100 group-hover:scale-110 transition-transform`}
+                className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-lg transition-transform group-hover:scale-110 ${c.targetAudience === 'both' ? 'bg-indigo-500 shadow-indigo-100' : 'bg-rose-500 shadow-rose-100'}`}
               >
                 <Info className="w-7 h-7 text-white" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">{c.category}</p>
-                  <span className="text-[10px] font-bold text-indigo-400">{c.date}</span>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Circular</p>
+                  <span className="text-[10px] font-bold text-gray-400">{new Date(c.createdAt.seconds * 1000).toLocaleDateString()}</span>
                 </div>
                 <h4 className="text-[15px] font-black text-gray-900 truncate mt-0.5">{c.title}</h4>
+                <p className="text-[11px] text-gray-400 font-medium line-clamp-1">{c.content}</p>
               </div>
               <ChevronRight className="w-5 h-5 text-gray-200 shrink-0 group-hover:text-indigo-300 transition-colors" />
             </div>
           ))}
+          {circulars.filter(c => c.targetAudience !== "teachers").length === 0 && (
+            <div className="bg-white border border-dashed border-gray-200 rounded-[32px] p-10 text-center">
+              <Info className="w-8 h-8 text-gray-200 mx-auto mb-2" />
+              <p className="text-xs text-gray-400 font-medium">No official circulars yet.</p>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Latest Remarks */}
+      {/* Latest Remarks - Placeholder for now as it's not in the new flat model yet */}
       <div className="mt-8 animate-fade-slide-up delay-400">
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-lg font-black text-gray-900">Teacher Remarks</h3>
           <span className="text-[10px] font-black uppercase text-gray-300 tracking-widest">Recent</span>
         </div>
         
-        {student?.remarks && student.remarks.length > 0 ? (
-          <div className="space-y-4">
-            {student.remarks.slice(0, 2).map((r, i) => (
-              <div key={i} className="bg-white border border-gray-100 rounded-[32px] p-6 shadow-sm">
-                <div className="flex gap-4">
-                  <div className="w-12 h-12 bg-violet-100 rounded-2xl flex items-center justify-center shrink-0">
-                    <span className="text-sm font-black text-violet-700">
-                      {r.teacher.split(' ').map(n => n[0]).join('')}
-                    </span>
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex justify-between items-start">
-                      <h4 className="text-sm font-black text-gray-900">{r.teacher}</h4>
-                      <span className="text-[9px] font-bold text-gray-300">{r.date}</span>
-                    </div>
-                    <p className="text-[10px] font-black uppercase text-indigo-500 tracking-wider">{r.subject}</p>
-                    <p className="text-xs text-gray-500 font-medium mt-2 leading-relaxed italic">
-                      &quot;{r.content}&quot;
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="bg-white border border-dashed border-gray-200 rounded-[32px] p-10 text-center">
-            <MessageSquare className="w-8 h-8 text-gray-200 mx-auto mb-2" />
-            <p className="text-xs text-gray-400 font-medium">No remarks from teachers yet.</p>
-          </div>
-        )}
+        <div className="bg-white border border-dashed border-gray-200 rounded-[32px] p-10 text-center">
+          <MessageSquare className="w-8 h-8 text-gray-200 mx-auto mb-2" />
+          <p className="text-xs text-gray-400 font-medium">No remarks from teachers yet.</p>
+        </div>
       </div>
 
-      {/* Recent Diary Entries */}
+      {/* Recent Homework Entries */}
       <div className="mt-8 animate-fade-slide-up delay-500">
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-lg font-black text-gray-900">Upcoming Tasks</h3>
@@ -160,8 +151,7 @@ export default function HomeScreen() {
           </button>
         </div>
         <div className="space-y-3">
-          {diaryEntries
-            .filter((d) => d.status === "Pending")
+          {homework
             .slice(0, 2)
             .map((d) => (
               <div
@@ -169,15 +159,14 @@ export default function HomeScreen() {
                 className="flex items-center gap-4 bg-white rounded-[20px] p-4 border border-gray-100"
               >
                 <div
-                  className="w-2.5 h-2.5 rounded-full shrink-0"
-                  style={{ backgroundColor: d.color }}
+                  className="w-2.5 h-2.5 rounded-full shrink-0 bg-indigo-500"
                 />
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-black uppercase tracking-wider text-gray-400">{d.subject}</p>
                   <p className="text-sm font-bold text-gray-800 truncate">{d.task}</p>
                 </div>
                 <span className="text-[10px] font-black px-3 py-1.5 rounded-xl bg-orange-50 text-orange-500 shrink-0">
-                  {d.dueDate}
+                  Soon
                 </span>
               </div>
             ))}

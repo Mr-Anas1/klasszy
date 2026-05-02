@@ -10,14 +10,16 @@ import {
   Loader2,
   Mail,
   Lock,
-  AlertCircle
+  AlertCircle,
+  School
 } from "lucide-react";
 import { useApp, UserRole } from "@/context/AppContext";
 import { seedDatabase } from "@/lib/seed-data";
 
 export default function LoginScreen() {
-  const { login } = useApp();
+  const { login, showAlert } = useApp();
   const [role, setRole] = useState<UserRole | null>(null);
+  const [schoolCode, setSchoolCode] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -27,30 +29,37 @@ export default function LoginScreen() {
   const handleSeed = async () => {
     setSeeding(true);
     const ok = await seedDatabase();
-    if (ok) alert("Demo database initialized! Use password123 to login.");
-    else alert("Failed to seed. Check console and make sure .env.local is correct.");
+    if (ok) {
+      showAlert(
+        "Database Ready", 
+        "Multi-school Demo initialized!\n\nSchool Code: SCH001\nAdmin: admin@school1.edu\nPassword: password123", 
+        "success"
+      );
+    } else {
+      showAlert("Setup Failed", "Failed to seed database. Please check your Firebase configuration and console logs.", "error");
+    }
     setSeeding(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!role) {
-      setError("Please select a role first");
+    if (!schoolCode || !email || !password) {
+      setError("Please fill all fields");
       return;
     }
     setLoading(true);
     setError("");
-    const success = await login(email, password, role);
+    const success = await login(schoolCode, email, password);
     if (!success) {
-      setError("Invalid email, password, or role mismatch");
+      setError("Invalid credentials or school code");
     }
     setLoading(false);
   };
 
   const roles = [
-    { id: 'student' as UserRole, label: 'Student', icon: GraduationCap, color: 'bg-indigo-600' },
-    { id: 'teacher' as UserRole, label: 'Teacher', icon: Users, color: 'bg-violet-600' },
     { id: 'admin' as UserRole, label: 'Admin', icon: ShieldCheck, color: 'bg-rose-600' },
+    { id: 'teacher' as UserRole, label: 'Teacher', icon: Users, color: 'bg-violet-600' },
+    { id: 'parent' as UserRole, label: 'Parent', icon: GraduationCap, color: 'bg-indigo-600' },
   ];
 
   if (!role) {
@@ -75,10 +84,12 @@ export default function LoginScreen() {
               key={r.id}
               onClick={() => {
                 setRole(r.id);
-                // Pre-fill for convenience during setup/testing
-                if (r.id === 'admin') setEmail('admin@school.edu');
-                if (r.id === 'teacher') setEmail('teacher@school.edu');
-                if (r.id === 'student') setEmail('student@school.edu');
+                // Pre-fill for convenience
+                setSchoolCode("SCH001");
+                if (r.id === 'admin') setEmail('admin@school1.edu');
+                if (r.id === 'teacher') setEmail('teacher1@school1.edu');
+                if (r.id === 'parent') setEmail('parent1@school1.edu');
+                setPassword("password123");
               }}
               className="w-full bg-white border border-gray-100 rounded-[32px] p-6 flex items-center gap-5 shadow-sm active:scale-[0.97] transition-all hover:shadow-xl group"
             >
@@ -99,7 +110,7 @@ export default function LoginScreen() {
             className="w-full mt-4 py-4 rounded-[24px] border-2 border-dashed border-gray-200 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:border-indigo-200 hover:text-indigo-400 transition-all flex items-center justify-center gap-2"
           >
             {seeding ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
-            {seeding ? "Initializing..." : "Setup Demo Database"}
+            {seeding ? "Initializing Multi-school..." : "Setup New Multi-school DB"}
           </button>
         </div>
       </div>
@@ -116,7 +127,7 @@ export default function LoginScreen() {
           ← Back to roles
         </button>
         <h2 className="text-3xl font-black text-gray-900 tracking-tight">Welcome Back</h2>
-        <p className="text-sm text-gray-400 mt-2 font-medium">Please sign in as <span className="text-indigo-600 font-bold uppercase">{role}</span></p>
+        <p className="text-sm text-gray-400 mt-2 font-medium">Signing in as <span className="text-indigo-600 font-bold uppercase">{role}</span></p>
       </div>
 
       <form onSubmit={handleSubmit} className="flex-1 px-8 py-4 space-y-6">
@@ -129,14 +140,29 @@ export default function LoginScreen() {
 
         <div className="space-y-4">
           <div className="group">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4 mb-2 block">School Code</label>
+            <div className="relative">
+              <School className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300 group-focus-within:text-indigo-500 transition-colors" />
+              <input 
+                type="text" 
+                value={schoolCode}
+                onChange={(e) => setSchoolCode(e.target.value)}
+                placeholder="e.g. SCH001"
+                className="w-full bg-gray-50 border-2 border-transparent focus:border-indigo-100 focus:bg-white rounded-[24px] py-5 pl-14 pr-6 text-sm font-bold text-gray-900 transition-all outline-none"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="group">
             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4 mb-2 block">Email Address</label>
             <div className="relative">
               <Mail className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300 group-focus-within:text-indigo-500 transition-colors" />
               <input 
-                type="email" 
+                type="text" 
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="name@school.edu"
+                placeholder="Username or Email"
                 className="w-full bg-gray-50 border-2 border-transparent focus:border-indigo-100 focus:bg-white rounded-[24px] py-5 pl-14 pr-6 text-sm font-bold text-gray-900 transition-all outline-none"
                 required
               />
@@ -170,10 +196,6 @@ export default function LoginScreen() {
             <>Sign In <ArrowRight className="w-5 h-5" /></>
           )}
         </button>
-
-        <div className="text-center pt-4">
-          <p className="text-[10px] text-gray-300 font-black uppercase tracking-widest">Forgot your credentials? Contact school IT</p>
-        </div>
       </form>
     </div>
   );

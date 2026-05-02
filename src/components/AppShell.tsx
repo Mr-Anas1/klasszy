@@ -12,6 +12,11 @@ import ProfileScreen from "@/components/screens/ProfileScreen";
 import TeacherHomeScreen from "@/components/screens/TeacherHomeScreen";
 import TeacherStudentsScreen from "@/components/screens/TeacherStudentsScreen";
 import AdminDashboardScreen from "@/components/screens/AdminDashboardScreen";
+import CircularsScreen from "@/components/screens/CircularsScreen";
+import CircularDetailScreen from "@/components/screens/CircularDetailScreen";
+import HomeworkHistoryScreen from "@/components/screens/HomeworkHistoryScreen";
+import ManageTeachersScreen from "@/components/screens/ManageTeachersScreen";
+import ManageStudentsScreen from "@/components/screens/ManageStudentsScreen";
 
 export default function AppShell() {
   const { activeTab, userRole } = useApp();
@@ -21,6 +26,11 @@ export default function AppShell() {
     // If user is admin, show admin dashboard for home, otherwise fallback to specific admin tools if needed
     if (userRole === "admin") {
       if (activeTab === "profile") return <ProfileScreen />;
+      if (activeTab === "circulars") return <CircularsScreen />;
+      if (activeTab === "view_circular") return <CircularDetailScreen />;
+      if (activeTab === "homework_history") return <HomeworkHistoryScreen />;
+      if (activeTab === "manage_teachers") return <ManageTeachersScreen />;
+      if (activeTab === "manage_students") return <ManageStudentsScreen />;
       return <AdminDashboardScreen />;
     }
 
@@ -28,6 +38,9 @@ export default function AppShell() {
     if (userRole === "teacher") {
       if (activeTab === "home") return <TeacherHomeScreen />;
       if (activeTab === "students") return <TeacherStudentsScreen />;
+      if (activeTab === "circulars") return <CircularsScreen />;
+      if (activeTab === "view_circular") return <CircularDetailScreen />;
+      if (activeTab === "homework_history") return <HomeworkHistoryScreen />;
       if (activeTab === "profile") return <ProfileScreen />;
       // Fallback for other teacher tabs
       return <TeacherHomeScreen />;
@@ -37,6 +50,8 @@ export default function AppShell() {
     switch (activeTab) {
       case "attendance": return <AttendanceScreen />;
       case "diary": return <DiaryScreen />;
+      case "circulars": return <CircularsScreen />;
+      case "view_circular": return <CircularDetailScreen />;
       case "analysis": return <AnalysisScreen />;
       case "profile": return <ProfileScreen />;
       default: return <HomeScreen />;

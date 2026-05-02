@@ -6,80 +6,190 @@ import {
   collection, 
   addDoc, 
   updateDoc, 
+  deleteDoc,
   doc, 
   query, 
   where,
   getDocs,
   setDoc,
   arrayUnion,
-  Timestamp
+  Timestamp,
+  orderBy,
+  limit
 } from "firebase/firestore";
+import { initializeApp, getApp, getApps } from "firebase/app";
 import { 
   signInWithEmailAndPassword, 
   signOut, 
   onAuthStateChanged,
+  createUserWithEmailAndPassword,
+  getAuth,
   User as FirebaseUser 
 } from "firebase/auth";
 import { db, auth } from "@/lib/firebase";
 
-export type UserRole = "student" | "teacher" | "admin";
+// Secondary Auth instance to onboard users without logging out the admin
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+};
+
+const secondaryApp = getApps().length > 1 ? getApp("onboarder") : initializeApp(firebaseConfig, "onboarder");
+const onboardAuth = getAuth(secondaryApp);
+
+export type UserRole = "admin" | "teacher" | "parent";
 
 export const STANDARD_GRADES = ["LKG", "UKG", "1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th", "10th", "11th", "12th"];
 
+// --- NEW DATA MODELS ---
+
+export interface School {
+  id: string;
+  name: string;
+  code: string;
+  logoUrl?: string;
+  themeColor?: string;
+  createdAt: Timestamp;
+}
+
+export interface UserProfile {
+  id: string;
+  schoolId: string;
+  name: string;
+  phone: string;
+  email: string;
+  role: UserRole;
+  classIds?: string[]; // for teachers
+  studentIds?: string[]; // for parents
+  deviceToken?: string;
+  createdAt: Timestamp;
+}
+
 export interface Student {
   id: string;
+  schoolId: string;
   name: string;
-  grade: string;
-  section: string;
-  rollNo: string;
-  email: string;
-  phone: string;
-  avatar: string;
-  school: string;
-  remarks?: { teacher: string; date: string; content: string; subject: string }[];
+  classId: string;
+  parentId: string; // userId
 }
 
-export interface Teacher {
+export interface ClassRoom {
   id: string;
-  empId: string;
-  name: string;
-  allowedGrades: string[];
-  email: string;
-  phone: string;
-  avatar: string;
-  school: string;
+  schoolId: string;
+  name: string; // e.g. "10"
+  section: string; // e.g. "A"
 }
 
-export interface Admin {
+export interface Announcement {
   id: string;
-  name: string;
-  email: string;
-  avatar: string;
-  school: string;
+  schoolId: string;
+  title: string;
+  message: string;
+  createdBy: string;
+  createdAt: Timestamp;
+}
+export interface Circular {
+  id: string;
+  schoolId: string;
+  title: string;
+  content: string;
+  targetAudience: "teachers" | "parents" | "both";
+  imageUrl?: string;
+  createdBy: string;
+  createdAt: Timestamp;
 }
 
-export interface ClassInfo {
-  grade: string;
-  sections: string[];
+export interface Homework {
+  id: string;
+  schoolId: string;
+  classId: string;
+  className: string;
+  subject: string;
+  task: string;
+  dueDate: string;
+  priority: "High" | "Medium" | "Low";
+  color: string;
+  createdBy: string;
+  createdAt: Timestamp;
+}
+
+export interface HomeworkStatus {
+  id: string; // studentId_homeworkId
+  status: "Pending" | "Completed";
+}
+
+export interface AttendanceRecord {
+  id: string;
+  schoolId: string;
+  classId: string;
+  date: string; // YYYY-MM-DD
+  records: { studentId: string; status: "present" | "absent" }[];
+  markedBy: string;
+}
+
+export interface DiaryEntry {
+  id: string;
+  schoolId: string;
+  subject: string;
+  task: string;
+  dueDate: string;
+  priority: "High" | "Medium" | "Low";
+  status: "Pending" | "Completed";
+  color: string;
+}
+
+export interface SkillStat {
+  label: string;
+  value: number;
+  color: string;
+  bgColor: string;
 }
 
 interface AppContextType {
   isLoggedIn: boolean;
   userRole: UserRole | null;
-  user: Student | Teacher | Admin | null;
+  user: UserProfile | null;
+  school: School | null;
   activeTab: string;
   students: Student[];
-  teachers: Teacher[];
-  grades: ClassInfo[];
+  classes: ClassRoom[];
+  announcements: Announcement[];
+  homework: Homework[];
+  attendance: AttendanceRecord[];
+  diaryEntries: DiaryEntry[];
+  usersList: UserProfile[];
+  circulars: Circular[];
+  skillStats: SkillStat[];
   loading: boolean;
-  login: (email: string, password: string, role: UserRole) => Promise<boolean>;
+  login: (schoolCode: string, email: string, password: string) => Promise<boolean>;
   logout: () => void;
   setActiveTab: (tab: string) => void;
-  addStudent: (student: Omit<Student, "id">) => Promise<void>;
-  addTeacher: (teacher: Omit<Teacher, "id">) => Promise<void>;
-  addClass: (grade: string, section: string) => Promise<void>;
-  sendRemark: (studentId: string, remark: string, subject: string) => Promise<void>;
-  markAttendance: (grade: string, section: string, status: string) => Promise<void>;
+  addStudent: (data: { name: string; classId: string; username: string; password?: string }) => Promise<void>;
+  addClass: (c: Omit<ClassRoom, "id" | "schoolId">) => Promise<void>;
+  sendAnnouncement: (title: string, message: string) => Promise<void>;
+  assignHomework: (data: Omit<Homework, "id" | "schoolId" | "createdBy" | "createdAt">) => Promise<void>;
+  markAttendance: (classId: string, date: string, records: AttendanceRecord["records"]) => Promise<void>;
+  toggleDiaryEntry: (id: string) => Promise<void>;
+  updateTeacherClasses: (teacherId: string, classIds: string[]) => Promise<void>;
+  onboardUser: (name: string, email: string, role: UserRole, password?: string, classIds?: string[]) => Promise<void>;
+  updateStudent: (id: string, data: Partial<Student>) => Promise<void>;
+  deleteStudent: (id: string) => Promise<void>;
+  updateClass: (id: string, data: Partial<ClassRoom>) => Promise<void>;
+  deleteClass: (id: string) => Promise<void>;
+  updateUserProfile: (id: string, data: Partial<UserProfile>) => Promise<void>;
+  deleteUser: (id: string) => Promise<void>;
+  sendCircular: (data: Omit<Circular, "id" | "schoolId" | "createdBy" | "createdAt">) => Promise<void>;
+  deleteCircular: (id: string) => Promise<void>;
+  selectedCircular: Circular | null;
+  setSelectedCircular: (c: Circular | null) => void;
+  showAlert: (title: string, message: string, type?: "success" | "error") => void;
+  showConfirm: (title: string, message: string, onConfirm: () => void) => void;
+  modal: { title: string; message: string; type: "success" | "error" | "confirm"; onConfirm?: () => void } | null;
+  hideModal: () => void;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -87,70 +197,184 @@ const AppContext = createContext<AppContextType | null>(null);
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState<UserRole | null>(null);
-  const [user, setUser] = useState<Student | Teacher | Admin | null>(null);
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [school, setSchool] = useState<School | null>(null);
   const [activeTab, setActiveTab] = useState("home");
   const [loading, setLoading] = useState(true);
-  
+  const [circulars, setCirculars] = useState<Circular[]>([]);
+  const [selectedCircular, setSelectedCircular] = useState<Circular | null>(null);
   const [students, setStudents] = useState<Student[]>([]);
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
-  const [grades, setGrades] = useState<ClassInfo[]>([]);
+  const [classes, setClasses] = useState<ClassRoom[]>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [homework, setHomework] = useState<Homework[]>([]);
+  const [homeworkStatus, setHomeworkStatus] = useState<Record<string, "Pending" | "Completed">>({});
+  const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
+  const [diaryEntries, setDiaryEntries] = useState<DiaryEntry[]>([]);
+  const [usersList, setUsersList] = useState<UserProfile[]>([]);
+
+  const skillStats: SkillStat[] = [
+    { label: "Concept Clarity", value: 88, color: "text-indigo-600", bgColor: "bg-indigo-50" },
+    { label: "Critical Thinking", value: 72, color: "text-violet-600", bgColor: "bg-violet-50" },
+    { label: "Consistency", value: 95, color: "text-blue-600", bgColor: "bg-blue-50" },
+    { label: "Application", value: 80, color: "text-emerald-600", bgColor: "bg-emerald-50" },
+  ];
 
   // Auth Listener
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
+      console.log("Auth State Changed:", fbUser?.email);
       if (fbUser) {
-        setIsLoggedIn(true);
-        // Fetch user profile from Firestore to get role and school
-        const userDoc = await getDocs(query(collection(db, "users"), where("email", "==", fbUser.email)));
-        if (!userDoc.empty) {
-          const userData = userDoc.docs[0].data();
-          setUser({ id: userDoc.docs[0].id, ...userData } as any);
-          setUserRole(userData.role as UserRole);
+        try {
+          // Fetch user profile from Firestore
+          const userQ = query(collection(db, "users"), where("email", "==", fbUser.email || ""));
+          const userDoc = await getDocs(userQ);
+          
+          if (!userDoc.empty) {
+            const userData = { id: userDoc.docs[0].id, ...userDoc.docs[0].data() } as UserProfile;
+            console.log("User Data Loaded:", userData.role, "School:", userData.schoolId);
+            setUser(userData);
+            setUserRole(userData.role);
+            
+            if (userData.schoolId) {
+              // Fetch school data - using the document ID directly if possible, or querying by 'id' field
+              const schoolQ = query(collection(db, "schools"), where("id", "==", userData.schoolId));
+              const schoolDoc = await getDocs(schoolQ);
+              
+              if (!schoolDoc.empty) {
+                const schoolData = { id: schoolDoc.docs[0].id, ...schoolDoc.docs[0].data() } as School;
+                setSchool(schoolData);
+                setIsLoggedIn(true);
+              } else {
+                console.warn("School not found for ID:", userData.schoolId);
+              }
+            } else {
+              console.warn("User has no schoolId:", userData.id);
+            }
+          } else {
+            console.warn("No user profile found for email:", fbUser.email);
+            // If no profile, we can't really do much in a multi-tenant app
+            setIsLoggedIn(false);
+          }
+        } catch (err) {
+          console.error("Error fetching user profile:", err);
         }
       } else {
         setIsLoggedIn(false);
         setUser(null);
         setUserRole(null);
+        setSchool(null);
       }
       setLoading(false);
     });
     return () => unsubscribe();
   }, []);
 
-  // Data Listeners
+  // Data Listeners (Scoped by School)
   useEffect(() => {
-    if (!isLoggedIn) return;
+    if (!isLoggedIn || !school) return;
 
-    const unsubStudents = onSnapshot(collection(db, "students"), (snapshot) => {
-      setStudents(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Student)));
+    const qOptions = [where("schoolId", "==", school.id)];
+
+    const unsubStudents = onSnapshot(query(collection(db, "students"), ...qOptions), (snap) => {
+      setStudents(snap.docs.map(d => ({ id: d.id, ...d.data() } as Student)));
     });
 
-    const unsubTeachers = onSnapshot(collection(db, "teachers"), (snapshot) => {
-      setTeachers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Teacher)));
+    const unsubClasses = onSnapshot(query(collection(db, "classes"), ...qOptions), (snap) => {
+      setClasses(snap.docs.map(d => ({ id: d.id, ...d.data() } as ClassRoom)));
     });
 
-    const unsubGrades = onSnapshot(collection(db, "grades"), (snapshot) => {
-      // Group sections by grade
-      const gradesMap: Record<string, string[]> = {};
-      snapshot.docs.forEach(doc => {
-        const data = doc.data();
-        if (!gradesMap[data.grade]) gradesMap[data.grade] = [];
-        if (data.section) gradesMap[data.grade].push(data.section);
+    const unsubAnnouncements = onSnapshot(query(collection(db, "announcements"), ...qOptions), (snap) => {
+      setAnnouncements(snap.docs.map(d => ({ id: d.id, ...d.data() } as Announcement)));
+    });
+
+    const unsubHomework = onSnapshot(query(collection(db, "homework"), ...qOptions), (snap) => {
+      setHomework(snap.docs.map(d => ({ id: d.id, ...d.data() } as Homework)));
+    });
+
+    const unsubAttendance = onSnapshot(query(collection(db, "attendance"), ...qOptions), (snap) => {
+      setAttendance(snap.docs.map(d => ({ id: d.id, ...d.data() } as AttendanceRecord)));
+    });
+
+    // Listen to homework status for this user (if parent/student)
+    const unsubStatus = user ? onSnapshot(query(collection(db, "homeworkStatus"), where("userId", "==", user.id)), (snap) => {
+      const statusMap: Record<string, "Pending" | "Completed"> = {};
+      snap.docs.forEach(d => {
+        const data = d.data();
+        statusMap[data.homeworkId] = data.status;
       });
-      setGrades(Object.entries(gradesMap).map(([grade, sections]) => ({ grade, sections })));
+      setHomeworkStatus(statusMap);
+    }) : () => {};
+
+    // Compute diaryEntries based on homework and status
+    const unsubDiary = () => {
+      // We'll use a useEffect to update diaryEntries whenever homework or homeworkStatus changes
+    };
+
+    // Fetch all users in school for admin/management purposes
+    const unsubUsers = onSnapshot(query(collection(db, "users"), ...qOptions), (snap) => {
+      setUsersList(snap.docs.map(d => ({ id: d.id, ...d.data() } as UserProfile)));
+    });
+
+    const unsubCirculars = onSnapshot(query(collection(db, "circulars"), ...qOptions), (snap) => {
+      const sorted = snap.docs
+        .map(d => ({ id: d.id, ...d.data() } as Circular))
+        .sort((a, b) => b.createdAt.seconds - a.createdAt.seconds);
+      setCirculars(sorted);
     });
 
     return () => {
-      unsubStudents();
-      unsubTeachers();
-      unsubGrades();
+      unsubStudents(); unsubClasses(); unsubAnnouncements(); unsubHomework(); unsubAttendance(); unsubStatus(); unsubUsers(); unsubCirculars();
     };
-  }, [isLoggedIn]);
+  }, [isLoggedIn, school, user]);
 
-  const login = async (email: string, password: string, role: UserRole): Promise<boolean> => {
+  // Derived diaryEntries logic
+  useEffect(() => {
+    if (!user) {
+      setDiaryEntries([]);
+      return;
+    }
+
+    let targetClassId = "";
+    if (userRole === "parent") {
+      const student = students.find(s => s.parentId === user.id);
+      targetClassId = student?.classId || "";
+    } else if (userRole === "teacher") {
+      // Teachers see all homework assigned in their classes
+      setDiaryEntries(homework.filter(h => user.classIds?.includes(h.classId)).map(h => ({
+        ...h,
+        status: "Pending" // Teachers don't have a personal status
+      } as DiaryEntry)));
+      return;
+    }
+
+    if (targetClassId) {
+      const entries = homework
+        .filter(h => h.classId === targetClassId)
+        .map(h => ({
+          ...h,
+          status: homeworkStatus[h.id] || "Pending"
+        } as DiaryEntry));
+      setDiaryEntries(entries);
+    } else if (homework.length > 0 && userRole === "parent") {
+       // Fallback for demo if students list is still loading
+       setDiaryEntries(homework.map(h => ({ ...h, status: homeworkStatus[h.id] || "Pending" } as DiaryEntry)));
+    }
+  }, [homework, homeworkStatus, user, userRole, students]);
+
+  const login = async (schoolCode: string, email: string, password: string): Promise<boolean> => {
+    if (!schoolCode || !email) return false;
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      // Role is handled by the auth listener
+      // 1. Verify school code
+      const schoolQ = query(collection(db, "schools"), where("code", "==", schoolCode));
+      const schoolSnap = await getDocs(schoolQ);
+      if (schoolSnap.empty) {
+        console.error("Invalid school code");
+        return false;
+      }
+
+      // 2. Authenticate (Handle username login)
+      const finalEmail = email.includes("@") ? email : `${email.toLowerCase()}@${schoolCode.toLowerCase()}.com`;
+      await signInWithEmailAndPassword(auth, finalEmail, password);
       return true;
     } catch (error) {
       console.error("Login error:", error);
@@ -163,67 +387,207 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setActiveTab("home");
   };
 
-  const addStudent = async (s: Omit<Student, "id">) => {
-    await addDoc(collection(db, "students"), {
-      ...s,
+  // --- CRUD FUNCTIONS ---
+
+  const addStudent = async (data: { name: string; classId: string; username: string; password?: string }) => {
+    if (!school) return;
+    const pass = data.password || "password123";
+    
+    if (pass.length < 6) {
+      showAlert("Weak Password", "Password must be at least 6 characters.", "error");
+      throw new Error("Weak password");
+    }
+
+    try {
+      const email = `${data.username.toLowerCase().replace(/\s/g, "")}@${school.code.toLowerCase()}.com`;
+
+      // 1. Create Parent Auth Account
+      const userCred = await createUserWithEmailAndPassword(onboardAuth, email, pass);
+      const parentUid = userCred.user.uid;
+
+      // 2. Create Parent Profile
+      await setDoc(doc(db, "users", parentUid), {
+        schoolId: school.id,
+        name: `${data.name}'s Parent`,
+        email: email,
+        role: "parent",
+        studentIds: [], // We'll fill this or just use parentId in student doc
+        createdAt: Timestamp.now()
+      });
+
+      // 3. Create Student Doc
+      await addDoc(collection(db, "students"), {
+        schoolId: school.id,
+        classId: data.classId,
+        name: data.name,
+        parentId: parentUid,
+        createdAt: Timestamp.now()
+      });
+
+      showAlert("Student Added", `Account created for ${data.name}!\n\nUsername: ${data.username}\nPassword: ${pass}`, "success");
+    } catch (err: any) {
+      console.error(err);
+      showAlert("Failed to add student", err.message, "error");
+      throw err;
+    }
+  };
+
+  const addClass = async (c: Omit<ClassRoom, "id" | "schoolId">) => {
+    if (!school) return;
+    await addDoc(collection(db, "classes"), { ...c, schoolId: school.id });
+  };
+
+  const sendAnnouncement = async (title: string, message: string) => {
+    if (!school || !user) return;
+    await addDoc(collection(db, "announcements"), {
+      schoolId: school.id,
+      title,
+      message,
+      createdBy: user.id,
       createdAt: Timestamp.now()
     });
   };
 
-  const addTeacher = async (t: Omit<Teacher, "id">) => {
-    await addDoc(collection(db, "teachers"), {
-      ...t,
-      createdAt: Timestamp.now()
-    });
-    // Also create a user record for login
-    await addDoc(collection(db, "users"), {
-      email: t.email,
-      role: "teacher",
-      name: t.name,
-      school: t.school
-    });
-  };
-
-  const addClass = async (grade: string, section: string) => {
-    // In our model, each grade-section is a doc or we group them. 
-    // Let's store each class as a separate doc for simplicity in attendance/etc.
-    await addDoc(collection(db, "grades"), {
-      grade,
-      section,
+  const assignHomework = async (data: Omit<Homework, "id" | "schoolId" | "createdBy" | "createdAt">) => {
+    if (!school || !user) return;
+    await addDoc(collection(db, "homework"), {
+      ...data,
+      schoolId: school.id,
+      createdBy: user.id,
       createdAt: Timestamp.now()
     });
   };
 
-  const sendRemark = async (studentId: string, content: string, subject: string) => {
-    const studentRef = doc(db, "students", studentId);
-    const newRemark = {
-      teacher: user?.name || "Teacher",
-      date: new Date().toLocaleDateString(),
-      content,
-      subject,
-      timestamp: Timestamp.now()
-    };
-    await updateDoc(studentRef, {
-      remarks: arrayUnion(newRemark)
+  const markAttendance = async (classId: string, date: string, records: AttendanceRecord["records"]) => {
+    if (!school || !user) return;
+    // Follow the "one doc per class per day" rule
+    const q = query(collection(db, "attendance"), where("schoolId", "==", school.id), where("classId", "==", classId), where("date", "==", date));
+    const snap = await getDocs(q);
+    
+    if (snap.empty) {
+      await addDoc(collection(db, "attendance"), {
+        schoolId: school.id,
+        classId,
+        date,
+        records,
+        markedBy: user.id,
+        createdAt: Timestamp.now()
+      });
+    } else {
+      await updateDoc(doc(db, "attendance", snap.docs[0].id), { records, markedBy: user.id });
+    }
+  };
+
+  const toggleDiaryEntry = async (id: string) => {
+    if (!user) return;
+    const currentStatus = homeworkStatus[id] || "Pending";
+    const newStatus = currentStatus === "Completed" ? "Pending" : "Completed";
+
+    // Store status in a document keyed by userId_homeworkId
+    const statusId = `${user.id}_${id}`;
+    await setDoc(doc(db, "homeworkStatus", statusId), {
+      userId: user.id,
+      homeworkId: id,
+      status: newStatus,
+      updatedAt: Timestamp.now()
     });
   };
 
-  const markAttendance = async (grade: string, section: string, status: string) => {
-    await addDoc(collection(db, "attendance"), {
-      grade,
-      section,
-      status,
-      date: new Date().toISOString().split('T')[0],
-      markedBy: user?.id,
-      timestamp: Timestamp.now()
+  const updateTeacherClasses = async (teacherId: string, classIds: string[]) => {
+    if (!school) return;
+    await updateDoc(doc(db, "users", teacherId), { classIds });
+  };
+
+  const onboardUser = async (name: string, email: string, role: UserRole, password?: string, classIds: string[] = []) => {
+    if (!school) return;
+    const pass = password || "password123";
+    
+    if (pass.length < 6) {
+      showAlert("Weak Password", "Password must be at least 6 characters.", "error");
+      throw new Error("Weak password");
+    }
+
+    try {
+      // 1. Create real Auth account
+      const userCred = await createUserWithEmailAndPassword(onboardAuth, email, pass);
+      const uid = userCred.user.uid;
+
+      // 2. Create profile in 'users' collection
+      await setDoc(doc(db, "users", uid), {
+        schoolId: school.id,
+        name,
+        email,
+        role,
+        classIds: classIds,
+        studentIds: [],
+        createdAt: Timestamp.now()
+      });
+      console.log(`Successfully onboarded ${role}: ${email}`);
+    } catch (err) {
+      console.error("Onboarding failed:", err);
+      throw err;
+    }
+  };
+
+  const updateStudent = async (id: string, data: Partial<Student>) => {
+    await updateDoc(doc(db, "students", id), data);
+  };
+
+  const deleteStudent = async (id: string) => {
+    await deleteDoc(doc(db, "students", id));
+  };
+
+  const updateClass = async (id: string, data: Partial<ClassRoom>) => {
+    await updateDoc(doc(db, "classes", id), data);
+  };
+
+  const deleteClass = async (id: string) => {
+    await deleteDoc(doc(db, "classes", id));
+  };
+
+  const updateUserProfile = async (id: string, data: Partial<UserProfile>) => {
+    await updateDoc(doc(db, "users", id), data);
+  };
+
+  const deleteUser = async (id: string) => {
+    await deleteDoc(doc(db, "users", id));
+  };
+
+  const sendCircular = async (data: Omit<Circular, "id" | "schoolId" | "createdBy" | "createdAt">) => {
+    if (!school || !user) return;
+    await addDoc(collection(db, "circulars"), {
+      ...data,
+      schoolId: school.id,
+      createdBy: user.id,
+      createdAt: Timestamp.now()
     });
   };
+
+  const deleteCircular = async (id: string) => {
+    await deleteDoc(doc(db, "circulars", id));
+  };
+
+  const [modal, setModal] = useState<AppContextType["modal"]>(null);
+
+  const showAlert = (title: string, message: string, type: "success" | "error" = "success") => {
+    setModal({ title, message, type });
+  };
+
+  const showConfirm = (title: string, message: string, onConfirm: () => void) => {
+    setModal({ title, message, type: "confirm", onConfirm });
+  };
+
+  const hideModal = () => setModal(null);
 
   return (
     <AppContext.Provider
       value={{
-        isLoggedIn, userRole, user, activeTab, students, teachers, grades, loading,
-        login, logout, setActiveTab, addStudent, addTeacher, addClass, sendRemark, markAttendance
+        isLoggedIn, userRole, user, school, activeTab, students, classes, announcements, homework, attendance, diaryEntries, usersList, circulars, skillStats, loading,
+        login, logout, setActiveTab, addStudent, addClass, sendAnnouncement, assignHomework, markAttendance, toggleDiaryEntry, updateTeacherClasses, onboardUser,
+        updateStudent, deleteStudent, updateClass, deleteClass, updateUserProfile, deleteUser,
+        sendCircular, deleteCircular,
+        selectedCircular, setSelectedCircular,
+        showAlert, showConfirm, modal, hideModal
       }}
     >
       {children}

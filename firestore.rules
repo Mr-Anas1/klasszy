@@ -1,0 +1,36 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper to get user data
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // Helper to check if user belongs to the same school as the resource
+    function belongsToSchool(schoolId) {
+      return request.auth != null && getUserData().schoolId == schoolId;
+    }
+
+    // Schools collection
+    match /schools/{schoolId} {
+      allow read: if request.auth != null;
+      allow write: if false; // Only manageable via Admin SDK/Console for now
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow read: if request.auth != null && (request.auth.uid == userId || getUserData().schoolId == resource.data.schoolId);
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Students, Classes, Announcements, Homework, Attendance
+    match /{collection}/{docId} {
+      allow read, write: if belongsToSchool(resource.data.schoolId) || belongsToSchool(request.resource.data.schoolId);
+      
+      // Special case for creating new docs
+      allow create: if request.auth != null && belongsToSchool(request.resource.data.schoolId);
+    }
+  }
+}

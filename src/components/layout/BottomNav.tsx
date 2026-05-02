@@ -1,4 +1,5 @@
 "use client";
+// Force refresh
 
 import React from "react";
 import { 
@@ -9,6 +10,7 @@ import {
   User, 
   Users, 
   ShieldCheck,
+  Bell
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 
@@ -19,21 +21,23 @@ export default function BottomNav() {
     if (userRole === "admin") {
       return [
         { id: "home", Icon: ShieldCheck },
+        { id: "circulars", Icon: Bell },
         { id: "profile", Icon: User },
       ];
     }
     if (userRole === "teacher") {
       return [
         { id: "home", Icon: BookOpen },
+        { id: "circulars", Icon: Bell },
         { id: "profile", Icon: User },
       ];
     }
     // Student default
     return [
       { id: "home", Icon: BookOpen },
+      { id: "circulars", Icon: Bell },
       { id: "attendance", Icon: Calendar },
       { id: "diary", Icon: FileText },
-      { id: "analysis", Icon: BarChart3 },
       { id: "profile", Icon: User },
     ];
   };
