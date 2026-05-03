@@ -32,5 +32,30 @@ service cloud.firestore {
       // Special case for creating new docs
       allow create: if request.auth != null && belongsToSchool(request.resource.data.schoolId);
     }
+
+    // Remark Replies collection
+    match /remarkReplies/{replyId} {
+      allow read: if belongsToSchool(resource.data.schoolId);
+      allow create: if request.auth != null && belongsToSchool(request.resource.data.schoolId);
+      allow update, delete: if false; // Replies are immutable
+    }
+
+    // Leave Applications collection
+    match /leaveApplications/{leaveId} {
+      allow read: if belongsToSchool(resource.data.schoolId);
+      allow create: if request.auth != null && belongsToSchool(request.resource.data.schoolId);
+      
+      // Teachers can update pending_teacher status
+      allow update: if request.auth != null 
+        && belongsToSchool(resource.data.schoolId)
+        && getUserData().role == 'teacher'
+        && resource.data.status == 'pending_teacher';
+      
+      // Admins can update pending_admin status
+      allow update: if request.auth != null 
+        && belongsToSchool(resource.data.schoolId)
+        && getUserData().role == 'admin'
+        && resource.data.status == 'pending_admin';
+    }
   }
 }

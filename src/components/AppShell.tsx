@@ -4,82 +4,104 @@ import React from "react";
 import { useApp } from "@/context/AppContext";
 import AppHeader from "@/components/layout/AppHeader";
 import BottomNav from "@/components/layout/BottomNav";
+
+// Shared screens
+import ProfileScreen from "@/components/screens/ProfileScreen";
+import CircularsScreen from "@/components/screens/CircularsScreen";
+import CircularDetailScreen from "@/components/screens/CircularDetailScreen";
+import HomeworkHistoryScreen from "@/components/screens/HomeworkHistoryScreen";
+import StudentDetailScreen from "@/components/screens/StudentDetailScreen";
+import TeacherDetailScreen from "@/components/screens/TeacherDetailScreen";
+import NotificationsScreen from "@/components/screens/NotificationsScreen";
+
+// Admin screens
+import AdminDashboardScreen from "@/components/screens/AdminDashboardScreen";
+import ManageUsersScreen from "@/components/screens/ManageUsersScreen";
+import ManageStudentsScreen from "@/components/screens/ManageStudentsScreen";
+import ManageTeachersScreen from "@/components/screens/ManageTeachersScreen";
+import ManageClassesScreen from "@/components/screens/ManageClassesScreen";
+import AdminAnnouncementsScreen from "@/components/screens/AdminAnnouncementsScreen";
+import AdminActivitiesScreen from "@/components/screens/AdminActivitiesScreen";
+
+// Teacher screens
+import TeacherHomeScreen from "@/components/screens/TeacherHomeScreen";
+import TeacherClassesScreen from "@/components/screens/TeacherClassesScreen";
+import TeacherActivitiesScreen from "@/components/screens/TeacherActivitiesScreen";
+import TeacherStudentsScreen from "@/components/screens/TeacherStudentsScreen";
+
+// Student / Parent screens
 import HomeScreen from "@/components/screens/HomeScreen";
 import AttendanceScreen from "@/components/screens/AttendanceScreen";
 import DiaryScreen from "@/components/screens/DiaryScreen";
 import AnalysisScreen from "@/components/screens/AnalysisScreen";
-import ProfileScreen from "@/components/screens/ProfileScreen";
-import TeacherHomeScreen from "@/components/screens/TeacherHomeScreen";
-import TeacherStudentsScreen from "@/components/screens/TeacherStudentsScreen";
-import AdminDashboardScreen from "@/components/screens/AdminDashboardScreen";
-import CircularsScreen from "@/components/screens/CircularsScreen";
-import CircularDetailScreen from "@/components/screens/CircularDetailScreen";
-import HomeworkHistoryScreen from "@/components/screens/HomeworkHistoryScreen";
-import ManageTeachersScreen from "@/components/screens/ManageTeachersScreen";
-import ManageStudentsScreen from "@/components/screens/ManageStudentsScreen";
-import StudentDetailScreen from "@/components/screens/StudentDetailScreen";
-import TeacherDetailScreen from "@/components/screens/TeacherDetailScreen";
 import RemarksScreen from "@/components/screens/RemarksScreen";
-import NotificationsScreen from "@/components/screens/NotificationsScreen";
 
 export default function AppShell() {
   const { activeTab, userRole } = useApp();
 
-  // Screen mapping based on role and active tab
   const getScreen = () => {
-    // If user is admin, show admin dashboard for home, otherwise fallback to specific admin tools if needed
+    // ── Admin ──────────────────────────────────────────────────────────────
     if (userRole === "admin") {
-      if (activeTab === "profile") return <ProfileScreen />;
-      if (activeTab === "circulars") return <CircularsScreen />;
-      if (activeTab === "view_circular") return <CircularDetailScreen />;
-      if (activeTab === "homework_history") return <HomeworkHistoryScreen />;
-      if (activeTab === "manage_teachers") return <ManageTeachersScreen />;
-      if (activeTab === "manage_students") return <ManageStudentsScreen />;
-      if (activeTab === "student_detail") return <StudentDetailScreen />;
-      if (activeTab === "teacher_detail") return <TeacherDetailScreen />;
-      return <AdminDashboardScreen />;
+      switch (activeTab) {
+        case "manage_users":         return <ManageUsersScreen />;
+        case "manage_students":      return <ManageStudentsScreen />;
+        case "manage_teachers":      return <ManageTeachersScreen />;
+        case "manage_classes":       return <ManageClassesScreen />;
+        case "admin_announcements":  return <AdminAnnouncementsScreen />;
+        case "admin_activities":     return <AdminActivitiesScreen />;
+        case "circulars":            return <CircularsScreen />;
+        case "view_circular":        return <CircularDetailScreen />;
+        case "homework_history":     return <HomeworkHistoryScreen />;
+        case "student_detail":       return <StudentDetailScreen />;
+        case "teacher_detail":       return <TeacherDetailScreen />;
+        case "profile":              return <ProfileScreen />;
+        default:                     return <AdminDashboardScreen />;
+      }
     }
 
-    // If user is teacher
+    // ── Teacher ────────────────────────────────────────────────────────────
     if (userRole === "teacher") {
-      if (activeTab === "home") return <TeacherHomeScreen />;
-      if (activeTab === "students") return <TeacherStudentsScreen />;
-      if (activeTab === "circulars") return <CircularsScreen />;
-      if (activeTab === "view_circular") return <CircularDetailScreen />;
-      if (activeTab === "homework_history") return <HomeworkHistoryScreen />;
-      if (activeTab === "profile") return <ProfileScreen />;
-      if (activeTab === "student_detail") return <StudentDetailScreen />;
-      if (activeTab === "teacher_detail") return <TeacherDetailScreen />;
-      // Fallback for other teacher tabs
-      return <TeacherHomeScreen />;
+      switch (activeTab) {
+        case "teacher_classes":      return <TeacherClassesScreen />;
+        case "teacher_activities":   return <TeacherActivitiesScreen />;
+        case "students":             return <TeacherStudentsScreen />;
+        case "circulars":            return <CircularsScreen />;
+        case "view_circular":        return <CircularDetailScreen />;
+        case "homework_history":     return <HomeworkHistoryScreen />;
+        case "student_detail":       return <StudentDetailScreen />;
+        case "teacher_detail":       return <TeacherDetailScreen />;
+        case "profile":              return <ProfileScreen />;
+        default:                     return <TeacherHomeScreen />;
+      }
     }
 
-    // If user is parent
+    // ── Parent ─────────────────────────────────────────────────────────────
     if (userRole === "parent") {
-      if (activeTab === "home") return <HomeScreen />;
-      if (activeTab === "notifications") return <NotificationsScreen />;
-      if (activeTab === "attendance") return <AttendanceScreen />;
-      if (activeTab === "diary") return <DiaryScreen />;
-      if (activeTab === "circulars") return <CircularsScreen />;
-      if (activeTab === "view_circular") return <CircularDetailScreen />;
-      if (activeTab === "homework_history") return <HomeworkHistoryScreen />;
-      if (activeTab === "profile") return <ProfileScreen />;
-      if (activeTab === "student_detail") return <StudentDetailScreen />;
-      if (activeTab === "teacher_detail") return <TeacherDetailScreen />;
-      if (activeTab === "remarks_history") return <RemarksScreen />;
-      // Fallback for other parent tabs
-      return <HomeScreen />;
+      switch (activeTab) {
+        case "notifications":        return <NotificationsScreen />;
+        case "attendance":           return <AttendanceScreen />;
+        case "diary":                return <DiaryScreen />;
+        case "circulars":            return <CircularsScreen />;
+        case "view_circular":        return <CircularDetailScreen />;
+        case "homework_history":     return <HomeworkHistoryScreen />;
+        case "remarks_history":      return <RemarksScreen />;
+        case "student_detail":       return <StudentDetailScreen />;
+        case "teacher_detail":       return <TeacherDetailScreen />;
+        case "profile":              return <ProfileScreen />;
+        default:                     return <HomeScreen />;
+      }
     }
 
-    // Default: Student role screens
+    // ── Student ────────────────────────────────────────────────────────────
     switch (activeTab) {
-      case "attendance": return <AttendanceScreen />;
-      case "diary": return <DiaryScreen />;
-      case "circulars": return <CircularsScreen />;
-      case "view_circular": return <CircularDetailScreen />;
-      case "analysis": return <AnalysisScreen />;
-      case "profile": return <ProfileScreen />;
-      default: return <HomeScreen />;
+      case "attendance":             return <AttendanceScreen />;
+      case "diary":                  return <DiaryScreen />;
+      case "circulars":              return <CircularsScreen />;
+      case "view_circular":          return <CircularDetailScreen />;
+      case "analysis":               return <AnalysisScreen />;
+      case "remarks_history":        return <RemarksScreen />;
+      case "profile":                return <ProfileScreen />;
+      default:                       return <HomeScreen />;
     }
   };
 

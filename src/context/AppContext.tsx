@@ -102,6 +102,51 @@ export interface Remark {
   createdAt: Timestamp;
 }
 
+export interface RemarkReply {
+  id: string;
+  schoolId: string;
+  remarkId: string;
+  studentId: string;
+  createdById: string;
+  createdByName: string;
+  createdByRole: UserRole;
+  message: string;
+  createdAt: Timestamp;
+}
+
+export type LeaveApplicationStatus =
+  | "pending_teacher"
+  | "rejected_by_teacher"
+  | "pending_admin"
+  | "rejected_by_admin"
+  | "approved";
+
+export interface LeaveApplication {
+  id: string;
+  schoolId: string;
+  studentId: string;
+  classId: string;
+  fromDate: string;
+  toDate: string;
+  reason: string;
+  status: LeaveApplicationStatus;
+
+  createdById: string;
+  createdByName: string;
+  createdByRole: UserRole;
+  createdAt: Timestamp;
+
+  teacherId?: string;
+  teacherName?: string;
+  teacherRemark?: string;
+  teacherActionAt?: Timestamp;
+
+  adminId?: string;
+  adminName?: string;
+  adminRemark?: string;
+  adminActionAt?: Timestamp;
+}
+
 export interface NotificationItem {
   id: string;
   schoolId: string;
@@ -166,7 +211,7 @@ export interface AttendanceRecord {
   schoolId: string;
   classId: string;
   date: string; // YYYY-MM-DD
-  records: { studentId: string; status: "present" | "absent" }[];
+  records: { studentId: string; status: "present" | "absent" | "late" }[];
   markedBy: string;
 }
 
@@ -205,6 +250,8 @@ interface AppContextType {
   skillStats: SkillStat[];
   studentDetails: StudentPersonalDetails[];
   remarks: Remark[];
+  remarkReplies: RemarkReply[];
+  leaveApplications: LeaveApplication[];
   notifications: NotificationItem[];
   selectedStudent: Student | null;
   selectedTeacher: UserProfile | null;
@@ -235,6 +282,11 @@ interface AppContextType {
   updateStudentPersonalDetails: (studentId: string, data: Omit<StudentPersonalDetails, "id" | "studentId" | "createdAt" | "updatedAt">) => Promise<void>;
   sendRemark: (studentId: string, message: string, type: "academic" | "behavior" | "general") => Promise<void>;
   getStudentRemarks: (studentId: string) => Remark[];
+  sendRemarkReply: (remarkId: string, studentId: string, message: string) => Promise<void>;
+  getRemarkReplies: (remarkId: string) => RemarkReply[];
+  applyLeave: (data: { studentId: string; fromDate: string; toDate: string; reason: string }) => Promise<void>;
+  teacherReviewLeave: (leaveId: string, data: { decision: "approve" | "reject"; remark?: string }) => Promise<void>;
+  adminReviewLeave: (leaveId: string, data: { decision: "approve" | "reject"; remark?: string }) => Promise<void>;
   sendNotification: (data: {
     title: string;
     message: string;
@@ -269,6 +321,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [usersList, setUsersList] = useState<UserProfile[]>([]);
   const [studentDetails, setStudentDetails] = useState<StudentPersonalDetails[]>([]);
   const [remarks, setRemarks] = useState<Remark[]>([]);
+  const [remarkReplies, setRemarkReplies] = useState<RemarkReply[]>([]);
+  const [leaveApplications, setLeaveApplications] = useState<LeaveApplication[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [selectedTeacher, setSelectedTeacher] = useState<UserProfile | null>(null);
@@ -394,6 +448,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setRemarks(sorted);
     });
 
+    const unsubRemarkReplies = onSnapshot(query(collection(db, "remarkReplies"), ...qOptions), (snap) => {
+      const sorted = snap.docs
+        .map(d => ({ id: d.id, ...d.data() } as RemarkReply))
+        .sort((a, b) => b.createdAt.seconds - a.createdAt.seconds);
+      setRemarkReplies(sorted);
+    });
+
+    const unsubLeaveApplications = onSnapshot(query(collection(db, "leaveApplications"), ...qOptions), (snap) => {
+      const sorted = snap.docs
+        .map(d => ({ id: d.id, ...d.data() } as LeaveApplication))
+        .sort((a, b) => b.createdAt.seconds - a.createdAt.seconds);
+      setLeaveApplications(sorted);
+    });
+
     const unsubNotifications = onSnapshot(query(collection(db, "notifications"), ...qOptions), (snap) => {
       const sorted = snap.docs
         .map(d => ({ id: d.id, ...d.data() } as NotificationItem))
@@ -402,7 +470,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => {
-      unsubStudents(); unsubClasses(); unsubAnnouncements(); unsubHomework(); unsubAttendance(); unsubStatus(); unsubUsers(); unsubCirculars(); unsubStudentDetails(); unsubRemarks(); unsubNotifications();
+      unsubStudents(); unsubClasses(); unsubAnnouncements(); unsubHomework(); unsubAttendance(); unsubStatus(); unsubUsers(); unsubCirculars(); unsubStudentDetails(); unsubRemarks(); unsubRemarkReplies(); unsubLeaveApplications(); unsubNotifications();
     };
   }, [isLoggedIn, school, user]);
 
@@ -687,6 +755,87 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return remarks.filter(r => r.studentId === studentId);
   };
 
+  const sendRemarkReply = async (remarkId: string, studentId: string, message: string) => {
+    if (!school || !user) return;
+    if (!remarkId || !studentId || !message.trim()) return;
+
+    await addDoc(collection(db, "remarkReplies"), {
+      schoolId: school.id,
+      remarkId,
+      studentId,
+      createdById: user.id,
+      createdByName: user.name,
+      createdByRole: user.role,
+      message: message.trim(),
+      createdAt: Timestamp.now()
+    });
+  };
+
+  const getRemarkReplies = (remarkId: string) => {
+    return remarkReplies.filter(r => r.remarkId === remarkId);
+  };
+
+  const applyLeave = async (data: { studentId: string; fromDate: string; toDate: string; reason: string }) => {
+    if (!school || !user) return;
+    const student = students.find(s => s.id === data.studentId);
+    if (!student) return;
+    if (!data.fromDate || !data.toDate || !data.reason.trim()) return;
+
+    await addDoc(collection(db, "leaveApplications"), {
+      schoolId: school.id,
+      studentId: data.studentId,
+      classId: student.classId,
+      fromDate: data.fromDate,
+      toDate: data.toDate,
+      reason: data.reason.trim(),
+      status: "pending_teacher" as LeaveApplicationStatus,
+      createdById: user.id,
+      createdByName: user.name,
+      createdByRole: user.role,
+      createdAt: Timestamp.now()
+    });
+  };
+
+  const teacherReviewLeave = async (leaveId: string, data: { decision: "approve" | "reject"; remark?: string }) => {
+    if (!school || !user) return;
+    if (user.role !== "teacher") return;
+    if (!leaveId) return;
+
+    const leave = leaveApplications.find(l => l.id === leaveId);
+    if (!leave) return;
+    if (leave.status !== "pending_teacher") return;
+
+    const newStatus: LeaveApplicationStatus = data.decision === "approve" ? "pending_admin" : "rejected_by_teacher";
+
+    await updateDoc(doc(db, "leaveApplications", leaveId), {
+      status: newStatus,
+      teacherId: user.id,
+      teacherName: user.name,
+      teacherRemark: (data.remark || "").trim(),
+      teacherActionAt: Timestamp.now()
+    });
+  };
+
+  const adminReviewLeave = async (leaveId: string, data: { decision: "approve" | "reject"; remark?: string }) => {
+    if (!school || !user) return;
+    if (user.role !== "admin") return;
+    if (!leaveId) return;
+
+    const leave = leaveApplications.find(l => l.id === leaveId);
+    if (!leave) return;
+    if (leave.status !== "pending_admin") return;
+
+    const newStatus: LeaveApplicationStatus = data.decision === "approve" ? "approved" : "rejected_by_admin";
+
+    await updateDoc(doc(db, "leaveApplications", leaveId), {
+      status: newStatus,
+      adminId: user.id,
+      adminName: user.name,
+      adminRemark: (data.remark || "").trim(),
+      adminActionAt: Timestamp.now()
+    });
+  };
+
   const sendNotification = async (data: {
     title: string;
     message: string;
@@ -726,12 +875,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   return (
     <AppContext.Provider
       value={{
-        isLoggedIn, userRole, user, school, activeTab, students, classes, announcements, homework, attendance, diaryEntries, usersList, circulars, skillStats, studentDetails, remarks, notifications, selectedStudent, selectedTeacher, loading,
+        isLoggedIn, userRole, user, school, activeTab, students, classes, announcements, homework, attendance, diaryEntries, usersList, circulars, skillStats, studentDetails, remarks, remarkReplies, leaveApplications, notifications, selectedStudent, selectedTeacher, loading,
         login, logout, setActiveTab, setSelectedStudent, setSelectedTeacher, addStudent, addClass, sendAnnouncement, assignHomework, markAttendance, toggleDiaryEntry, updateTeacherClasses, onboardUser,
         updateStudent, deleteStudent, updateClass, deleteClass, updateUserProfile, deleteUser,
         sendCircular, deleteCircular,
         selectedCircular, setSelectedCircular,
-        updateStudentPersonalDetails, sendRemark, getStudentRemarks, sendNotification,
+        updateStudentPersonalDetails, sendRemark, getStudentRemarks, sendRemarkReply, getRemarkReplies, applyLeave, teacherReviewLeave, adminReviewLeave, sendNotification,
         showAlert, showConfirm, modal, hideModal
       }}
     >

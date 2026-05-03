@@ -5,15 +5,29 @@ import { ArrowLeft, MessageSquare, X, Calendar, User } from "lucide-react";
 import { useApp, Remark } from "@/context/AppContext";
 
 export default function RemarksScreen() {
-  const { user, students, remarks, setActiveTab } = useApp();
+  const { user, students, remarks, setActiveTab, getRemarkReplies, sendRemarkReply, showAlert } = useApp();
   const [selectedRemark, setSelectedRemark] = useState<Remark | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [replyMessage, setReplyMessage] = useState("");
 
   if (!user) return null;
 
   // Get student for parent
   const currentStudent = user.role === "parent" ? students.find(s => s.parentId === user.id) : null;
   const studentRemarks = currentStudent ? remarks.filter(r => r.studentId === currentStudent.id) : [];
+
+  const selectedRemarkReplies = selectedRemark ? getRemarkReplies(selectedRemark.id) : [];
+
+  const handleSendReply = async () => {
+    if (!selectedRemark || !currentStudent) return;
+    if (!replyMessage.trim()) {
+      showAlert("Error", "Please type a reply message.", "error");
+      return;
+    }
+    await sendRemarkReply(selectedRemark.id, currentStudent.id, replyMessage);
+    setReplyMessage("");
+    showAlert("Sent", "Reply sent to teacher.", "success");
+  };
 
   return (
     <div className="pb-36 px-5 pt-4">
@@ -127,6 +141,46 @@ export default function RemarksScreen() {
                     <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Sent By</p>
                     <p className="text-sm font-bold text-gray-800">{selectedRemark.teacherName}</p>
                   </div>
+                </div>
+
+                {/* Replies */}
+                <div className="mt-5">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Replies</p>
+
+                  <div className="space-y-2 max-h-44 overflow-y-auto no-scrollbar">
+                    {selectedRemarkReplies.map((rep) => (
+                      <div key={rep.id} className="bg-gray-50 border border-gray-100 rounded-2xl p-3">
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">{rep.createdByName}</p>
+                          <span className="text-[10px] text-gray-300 font-medium">{new Date(rep.createdAt.seconds * 1000).toLocaleString()}</span>
+                        </div>
+                        <p className="text-sm font-bold text-gray-900 whitespace-pre-wrap">{rep.message}</p>
+                      </div>
+                    ))}
+                    {selectedRemarkReplies.length === 0 && (
+                      <div className="bg-white border border-dashed border-gray-200 rounded-2xl p-4 text-center">
+                        <p className="text-xs text-gray-400 font-medium">No replies yet.</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {user.role === "parent" && currentStudent && (
+                    <div className="mt-3">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1 ml-2 block">Reply</label>
+                      <textarea
+                        value={replyMessage}
+                        onChange={(e) => setReplyMessage(e.target.value)}
+                        placeholder="Type your reply..."
+                        className="w-full bg-gray-50 border-2 border-transparent rounded-2xl px-4 py-3 text-sm font-bold focus:outline-none focus:bg-white focus:border-indigo-100 transition-all min-h-[80px] resize-none"
+                      />
+                      <button
+                        onClick={handleSendReply}
+                        className="mt-3 w-full bg-indigo-600 text-white font-black py-4 rounded-2xl text-xs uppercase tracking-widest shadow-lg shadow-indigo-100 active:scale-95 transition-all"
+                      >
+                        Send Reply
+                      </button>
+                    </div>
+                  )}
                 </div>
             </div>
           </div>

@@ -1,18 +1,27 @@
 "use client";
 
-import React from "react";
+import React, { useMemo, useState } from "react";
 import { CheckCircle2, XCircle, Clock } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 
 export default function AttendanceScreen() {
-  const { attendance = [], students, user } = useApp();
+  const { attendance = [], students, user, leaveApplications, applyLeave, showAlert } = useApp();
+
+  const [leaveForm, setLeaveForm] = useState({ fromDate: "", toDate: "", reason: "" });
 
   // Find the student(s) linked to this parent
   const myStudents = students.filter(s => s.parentId === user?.id);
   const primaryStudent = myStudents[0];
 
+  const myLeaveApplications = useMemo(() => {
+    if (!primaryStudent) return [];
+    return leaveApplications
+      .filter(l => l.studentId === primaryStudent.id)
+      .sort((a, b) => b.createdAt.seconds - a.createdAt.seconds);
+  }, [leaveApplications, primaryStudent]);
+
   // Flatten the global attendance docs into a list of statuses for THIS student
-  const studentHistory = attendance.map(doc => {
+  const studentHistory: { date: string; status: "present" | "absent" | "late" }[] = attendance.map(doc => {
     const myRecord = doc.records.find(r => r.studentId === primaryStudent?.id);
     return {
       date: doc.date,
@@ -34,6 +43,26 @@ export default function AttendanceScreen() {
   };
 
   const getStatus = (status: string) => statusColor[status] || statusColor.absent;
+
+  const handleApplyLeave = async () => {
+    if (!primaryStudent) {
+      showAlert("Error", "No student linked to this account.", "error");
+      return;
+    }
+    if (!leaveForm.fromDate || !leaveForm.toDate || !leaveForm.reason.trim()) {
+      showAlert("Missing Info", "Please fill From Date, To Date, and Reason.", "error");
+      return;
+    }
+
+    await applyLeave({
+      studentId: primaryStudent.id,
+      fromDate: leaveForm.fromDate,
+      toDate: leaveForm.toDate,
+      reason: leaveForm.reason
+    });
+    setLeaveForm({ fromDate: "", toDate: "", reason: "" });
+    showAlert("Submitted", "Leave application submitted to teacher.", "success");
+  };
 
   return (
     <div className="pb-36 px-5">
@@ -125,6 +154,98 @@ export default function AttendanceScreen() {
           {studentHistory.length === 0 && (
             <div className="py-12 text-center text-gray-300 font-medium italic">
               No attendance records found yet.
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Leave Applications */}
+      <div className="mt-10 animate-fade-slide-up delay-300">
+        <h3 className="text-lg font-black text-gray-900 mb-4 px-1">Leave Applications</h3>
+
+        <div className="bg-white rounded-[24px] p-5 border border-gray-100 shadow-sm">
+          <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Apply Leave</p>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1 ml-2 block">From</label>
+              <input
+                value={leaveForm.fromDate}
+                onChange={(e) => setLeaveForm({ ...leaveForm, fromDate: e.target.value })}
+                placeholder="YYYY-MM-DD"
+                className="w-full bg-gray-50 border-2 border-transparent focus:border-indigo-100 rounded-2xl px-4 py-3 text-sm font-bold focus:outline-none transition-all"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1 ml-2 block">To</label>
+              <input
+                value={leaveForm.toDate}
+                onChange={(e) => setLeaveForm({ ...leaveForm, toDate: e.target.value })}
+                placeholder="YYYY-MM-DD"
+                className="w-full bg-gray-50 border-2 border-transparent focus:border-indigo-100 rounded-2xl px-4 py-3 text-sm font-bold focus:outline-none transition-all"
+              />
+            </div>
+          </div>
+
+          <div className="mt-3">
+            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1 ml-2 block">Reason</label>
+            <textarea
+              value={leaveForm.reason}
+              onChange={(e) => setLeaveForm({ ...leaveForm, reason: e.target.value })}
+              placeholder="Reason for leave..."
+              className="w-full bg-gray-50 border-2 border-transparent focus:border-indigo-100 rounded-2xl px-4 py-3 text-sm font-bold focus:outline-none transition-all min-h-[90px] resize-none"
+            />
+          </div>
+
+          <button
+            onClick={handleApplyLeave}
+            className="mt-4 w-full bg-indigo-600 text-white font-black py-4 rounded-2xl text-xs uppercase tracking-widest shadow-lg shadow-indigo-100 active:scale-95 transition-all"
+          >
+            Submit Application
+          </button>
+        </div>
+
+        <div className="mt-4 space-y-3">
+          {myLeaveApplications.map((l) => (
+            <div key={l.id} className="bg-white rounded-[20px] p-4 border border-gray-100 shadow-sm">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-black text-gray-900">{l.fromDate} → {l.toDate}</p>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">{l.status.replaceAll("_", " ")}</p>
+                </div>
+                <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl ${
+                  l.status === "approved" ? "bg-emerald-50 text-emerald-600" :
+                  l.status.includes("rejected") ? "bg-red-50 text-red-600" :
+                  "bg-amber-50 text-amber-700"
+                }`}>
+                  {l.status === "pending_teacher" ? "Teacher" : l.status === "pending_admin" ? "Admin" : l.status === "approved" ? "Approved" : "Rejected"}
+                </span>
+              </div>
+
+              <p className="text-sm text-gray-800 mt-3 whitespace-pre-wrap">{l.reason}</p>
+
+              {(l.teacherRemark || l.adminRemark) && (
+                <div className="mt-3 space-y-2">
+                  {l.teacherRemark && (
+                    <div className="bg-gray-50 border border-gray-100 rounded-2xl p-3">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Teacher Remark</p>
+                      <p className="text-sm font-bold text-gray-800 mt-1">{l.teacherRemark}</p>
+                    </div>
+                  )}
+                  {l.adminRemark && (
+                    <div className="bg-gray-50 border border-gray-100 rounded-2xl p-3">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Admin Remark</p>
+                      <p className="text-sm font-bold text-gray-800 mt-1">{l.adminRemark}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+
+          {myLeaveApplications.length === 0 && (
+            <div className="bg-white border border-dashed border-gray-200 rounded-[24px] p-8 text-center">
+              <p className="text-xs text-gray-400 font-medium">No leave applications yet.</p>
             </div>
           )}
         </div>
