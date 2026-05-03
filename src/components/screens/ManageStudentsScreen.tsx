@@ -5,7 +5,7 @@ import { Search, ChevronRight, ArrowLeft, Trash2, GraduationCap, School, User } 
 import { useApp, Student } from "@/context/AppContext";
 
 export default function ManageStudentsScreen() {
-  const { students, classes, setActiveTab, deleteStudent, showAlert, showConfirm } = useApp();
+  const { students, classes, setActiveTab, deleteStudent, showAlert, showConfirm, setSelectedStudent } = useApp();
   const [search, setSearch] = useState("");
 
   const filteredStudents = students.filter(s => 
@@ -61,14 +61,20 @@ export default function ManageStudentsScreen() {
             <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center shrink-0">
               <GraduationCap className="w-7 h-7 text-emerald-600" />
             </div>
-            <div className="flex-1 min-w-0">
+            <button 
+              onClick={() => {
+                setSelectedStudent(s);
+                setActiveTab("student_detail");
+              }}
+              className="flex-1 min-w-0 text-left"
+            >
               <h4 className="text-[15px] font-black text-gray-900 truncate">{s.name}</h4>
               <div className="flex items-center gap-2 mt-1">
                 <School className="w-3 h-3 text-gray-300" />
                 <p className="text-[11px] font-bold text-gray-400 truncate">Class: {getClassName(s.classId)}</p>
               </div>
               <p className="text-[9px] font-black text-gray-300 uppercase tracking-widest mt-2">ID: {s.id.slice(0, 8)}</p>
-            </div>
+            </button>
             <button 
               onClick={() => handleDelete(s)}
               className="w-10 h-10 bg-rose-50 text-rose-500 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-rose-500 hover:text-white"

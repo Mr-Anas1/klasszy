@@ -75,6 +75,45 @@ export interface Student {
   name: string;
   classId: string;
   parentId: string; // userId
+  username?: string;
+  password?: string;
+}
+
+export interface StudentPersonalDetails {
+  id: string;
+  studentId: string;
+  fatherName: string;
+  motherName: string;
+  bloodGroup: string;
+  dateOfBirth: string;
+  parentPhone: string;
+  address: string;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+export interface Remark {
+  id: string;
+  studentId: string;
+  teacherId: string;
+  teacherName: string;
+  message: string;
+  type: "academic" | "behavior" | "general";
+  createdAt: Timestamp;
+}
+
+export interface NotificationItem {
+  id: string;
+  schoolId: string;
+  title: string;
+  message: string;
+  type: "fee" | "general" | "instruction";
+  targetType: "student" | "class";
+  targetId: string;
+  createdById: string;
+  createdByName: string;
+  createdByRole: UserRole;
+  createdAt: Timestamp;
 }
 
 export interface ClassRoom {
@@ -164,10 +203,17 @@ interface AppContextType {
   usersList: UserProfile[];
   circulars: Circular[];
   skillStats: SkillStat[];
+  studentDetails: StudentPersonalDetails[];
+  remarks: Remark[];
+  notifications: NotificationItem[];
+  selectedStudent: Student | null;
+  selectedTeacher: UserProfile | null;
   loading: boolean;
   login: (schoolCode: string, email: string, password: string) => Promise<boolean>;
   logout: () => void;
   setActiveTab: (tab: string) => void;
+  setSelectedStudent: (student: Student | null) => void;
+  setSelectedTeacher: (teacher: UserProfile | null) => void;
   addStudent: (data: { name: string; classId: string; username: string; password?: string }) => Promise<void>;
   addClass: (c: Omit<ClassRoom, "id" | "schoolId">) => Promise<void>;
   sendAnnouncement: (title: string, message: string) => Promise<void>;
@@ -186,6 +232,16 @@ interface AppContextType {
   deleteCircular: (id: string) => Promise<void>;
   selectedCircular: Circular | null;
   setSelectedCircular: (c: Circular | null) => void;
+  updateStudentPersonalDetails: (studentId: string, data: Omit<StudentPersonalDetails, "id" | "studentId" | "createdAt" | "updatedAt">) => Promise<void>;
+  sendRemark: (studentId: string, message: string, type: "academic" | "behavior" | "general") => Promise<void>;
+  getStudentRemarks: (studentId: string) => Remark[];
+  sendNotification: (data: {
+    title: string;
+    message: string;
+    type: "fee" | "general" | "instruction";
+    targetType: "student" | "class";
+    targetId: string;
+  }) => Promise<void>;
   showAlert: (title: string, message: string, type?: "success" | "error") => void;
   showConfirm: (title: string, message: string, onConfirm: () => void) => void;
   modal: { title: string; message: string; type: "success" | "error" | "confirm"; onConfirm?: () => void } | null;
@@ -211,6 +267,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [diaryEntries, setDiaryEntries] = useState<DiaryEntry[]>([]);
   const [usersList, setUsersList] = useState<UserProfile[]>([]);
+  const [studentDetails, setStudentDetails] = useState<StudentPersonalDetails[]>([]);
+  const [remarks, setRemarks] = useState<Remark[]>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [selectedTeacher, setSelectedTeacher] = useState<UserProfile | null>(null);
 
   const skillStats: SkillStat[] = [
     { label: "Concept Clarity", value: 88, color: "text-indigo-600", bgColor: "bg-indigo-50" },
@@ -322,8 +383,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setCirculars(sorted);
     });
 
+    const unsubStudentDetails = onSnapshot(query(collection(db, "studentDetails"), ...qOptions), (snap) => {
+      setStudentDetails(snap.docs.map(d => ({ id: d.id, ...d.data() } as StudentPersonalDetails)));
+    });
+
+    const unsubRemarks = onSnapshot(query(collection(db, "remarks"), ...qOptions), (snap) => {
+      const sorted = snap.docs
+        .map(d => ({ id: d.id, ...d.data() } as Remark))
+        .sort((a, b) => b.createdAt.seconds - a.createdAt.seconds);
+      setRemarks(sorted);
+    });
+
+    const unsubNotifications = onSnapshot(query(collection(db, "notifications"), ...qOptions), (snap) => {
+      const sorted = snap.docs
+        .map(d => ({ id: d.id, ...d.data() } as NotificationItem))
+        .sort((a, b) => b.createdAt.seconds - a.createdAt.seconds);
+      setNotifications(sorted);
+    });
+
     return () => {
-      unsubStudents(); unsubClasses(); unsubAnnouncements(); unsubHomework(); unsubAttendance(); unsubStatus(); unsubUsers(); unsubCirculars();
+      unsubStudents(); unsubClasses(); unsubAnnouncements(); unsubHomework(); unsubAttendance(); unsubStatus(); unsubUsers(); unsubCirculars(); unsubStudentDetails(); unsubRemarks(); unsubNotifications();
     };
   }, [isLoggedIn, school, user]);
 
@@ -567,6 +646,71 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await deleteDoc(doc(db, "circulars", id));
   };
 
+  const updateStudentPersonalDetails = async (studentId: string, data: Omit<StudentPersonalDetails, "id" | "studentId" | "createdAt" | "updatedAt">) => {
+    if (!school) return;
+    
+    const existingDoc = await getDocs(query(collection(db, "studentDetails"), where("studentId", "==", studentId)));
+    
+    if (!existingDoc.empty) {
+      // Update existing document
+      await updateDoc(doc(db, "studentDetails", existingDoc.docs[0].id), {
+        ...data,
+        updatedAt: Timestamp.now()
+      });
+    } else {
+      // Create new document
+      await addDoc(collection(db, "studentDetails"), {
+        ...data,
+        studentId,
+        schoolId: school.id,
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now()
+      });
+    }
+  };
+
+  const sendRemark = async (studentId: string, message: string, type: "academic" | "behavior" | "general") => {
+    if (!school || !user) return;
+    
+    await addDoc(collection(db, "remarks"), {
+      schoolId: school.id,
+      studentId,
+      teacherId: user.id,
+      teacherName: user.name,
+      message,
+      type,
+      createdAt: Timestamp.now()
+    });
+  };
+
+  const getStudentRemarks = (studentId: string) => {
+    return remarks.filter(r => r.studentId === studentId);
+  };
+
+  const sendNotification = async (data: {
+    title: string;
+    message: string;
+    type: "fee" | "general" | "instruction";
+    targetType: "student" | "class";
+    targetId: string;
+  }) => {
+    if (!school || !user) return;
+    if (!data.title || !data.message || !data.targetId) return;
+
+    await addDoc(collection(db, "notifications"), {
+      schoolId: school.id,
+      title: data.title,
+      message: data.message,
+      type: data.type,
+      targetType: data.targetType,
+      targetId: data.targetId,
+      createdById: user.id,
+      createdByName: user.name,
+      createdByRole: user.role,
+      createdAt: Timestamp.now()
+    });
+  };
+
   const [modal, setModal] = useState<AppContextType["modal"]>(null);
 
   const showAlert = (title: string, message: string, type: "success" | "error" = "success") => {
@@ -582,11 +726,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   return (
     <AppContext.Provider
       value={{
-        isLoggedIn, userRole, user, school, activeTab, students, classes, announcements, homework, attendance, diaryEntries, usersList, circulars, skillStats, loading,
-        login, logout, setActiveTab, addStudent, addClass, sendAnnouncement, assignHomework, markAttendance, toggleDiaryEntry, updateTeacherClasses, onboardUser,
+        isLoggedIn, userRole, user, school, activeTab, students, classes, announcements, homework, attendance, diaryEntries, usersList, circulars, skillStats, studentDetails, remarks, notifications, selectedStudent, selectedTeacher, loading,
+        login, logout, setActiveTab, setSelectedStudent, setSelectedTeacher, addStudent, addClass, sendAnnouncement, assignHomework, markAttendance, toggleDiaryEntry, updateTeacherClasses, onboardUser,
         updateStudent, deleteStudent, updateClass, deleteClass, updateUserProfile, deleteUser,
         sendCircular, deleteCircular,
         selectedCircular, setSelectedCircular,
+        updateStudentPersonalDetails, sendRemark, getStudentRemarks, sendNotification,
         showAlert, showConfirm, modal, hideModal
       }}
     >

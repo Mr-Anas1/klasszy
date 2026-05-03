@@ -51,7 +51,15 @@ export default function AppHeader() {
             className="w-10 h-10 bg-indigo-100 rounded-2xl flex items-center justify-center active:scale-95 transition-transform shadow-sm"
           >
             {user ? (
-              <span className="text-sm font-black text-indigo-700">{user.avatar}</span>
+              <span className="text-sm font-black text-indigo-700">
+                {user.name
+                  .split(" ")
+                  .filter(Boolean)
+                  .map((n) => n[0])
+                  .join("")
+                  .slice(0, 2)
+                  .toUpperCase()}
+              </span>
             ) : (
               <User className="w-5 h-5 text-indigo-600" />
             )}
@@ -71,7 +79,13 @@ export default function AppHeader() {
       </div>
 
       <div className="flex gap-2">
-        <button className="w-10 h-10 bg-gray-50 rounded-2xl flex items-center justify-center relative">
+        <button
+          onClick={() => {
+            if (userRole === "parent") setActiveTab("notifications");
+            if (userRole === "teacher" || userRole === "admin") setActiveTab("circulars");
+          }}
+          className="w-10 h-10 bg-gray-50 rounded-2xl flex items-center justify-center relative"
+        >
           <Bell className="w-5 h-5 text-gray-500" />
           <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-indigo-500 rounded-full border-2 border-white" />
         </button>

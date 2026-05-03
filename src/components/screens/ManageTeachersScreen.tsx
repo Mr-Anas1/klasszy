@@ -5,7 +5,7 @@ import { User, Plus, Search, ChevronRight, ArrowLeft, Trash2, Mail, Users } from
 import { useApp, UserProfile } from "@/context/AppContext";
 
 export default function ManageTeachersScreen() {
-  const { usersList, setActiveTab, deleteUser, showAlert, showConfirm } = useApp();
+  const { usersList, setActiveTab, deleteUser, showAlert, showConfirm, setSelectedTeacher } = useApp();
   const [search, setSearch] = useState("");
 
   const teachers = usersList.filter(u => u.role === "teacher");
@@ -57,7 +57,13 @@ export default function ManageTeachersScreen() {
             <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center shrink-0">
               <span className="text-lg font-black text-indigo-600 uppercase">{t.name[0]}</span>
             </div>
-            <div className="flex-1 min-w-0">
+            <button 
+              onClick={() => {
+                setSelectedTeacher(t);
+                setActiveTab("teacher_detail");
+              }}
+              className="flex-1 min-w-0 text-left"
+            >
               <h4 className="text-[15px] font-black text-gray-900 truncate">{t.name}</h4>
               <div className="flex items-center gap-2 mt-1">
                 <Mail className="w-3 h-3 text-gray-300" />
@@ -69,7 +75,7 @@ export default function ManageTeachersScreen() {
                   {t.classIds?.length || 0} Classes Assigned
                 </p>
               </div>
-            </div>
+            </button>
             <button 
               onClick={() => handleDelete(t)}
               className="w-10 h-10 bg-rose-50 text-rose-500 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-rose-500 hover:text-white"

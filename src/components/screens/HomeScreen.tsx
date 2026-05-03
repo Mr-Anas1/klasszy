@@ -9,10 +9,10 @@ import {
   Zap,
   MessageSquare,
 } from "lucide-react";
-import { useApp } from "@/context/AppContext";
+import { useApp, StudentPersonalDetails, Remark } from "@/context/AppContext";
 
 export default function HomeScreen() {
-  const { user, circulars, homework, attendance, setActiveTab, showAlert, setSelectedCircular } = useApp();
+  const { user, circulars, homework, attendance, setActiveTab, showAlert, setSelectedCircular, students, studentDetails, remarks, notifications } = useApp();
 
   // Calculate attendance from the new model (one doc per class per day)
   // For a parent/student, we look at their own records. For simplicity in demo:
@@ -24,7 +24,17 @@ export default function HomeScreen() {
     
   const pendingTasks = homework.length;
 
+  // Get student and their remarks for parent
+  const currentStudent = students.find(s => s.parentId === user?.id);
+  const studentRemarks = currentStudent ? remarks.filter(r => r.studentId === currentStudent.id) : [];
+  const studentNotifications = currentStudent ? notifications.filter((n) =>
+    (n.targetType === "student" && n.targetId === currentStudent.id) ||
+    (n.targetType === "class" && n.targetId === currentStudent.classId)
+  ) : [];
+
   const [dateStr, setDateStr] = React.useState<string>("");
+  const [selectedRemark, setSelectedRemark] = React.useState<Remark | null>(null);
+  const [showRemarkDetail, setShowRemarkDetail] = React.useState(false);
 
   React.useEffect(() => {
     setDateStr(new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" }));
@@ -129,16 +139,128 @@ export default function HomeScreen() {
         </div>
       </div>
 
-      {/* Latest Remarks - Placeholder for now as it's not in the new flat model yet */}
+      {/* Latest Notifications */}
+      <div className="mt-8 animate-fade-slide-up delay-350">
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="text-lg font-black text-gray-900">Notifications</h3>
+          <button
+            onClick={() => setActiveTab("notifications")}
+            className="text-[10px] font-black uppercase text-indigo-500 tracking-widest"
+          >
+            View All
+          </button>
+        </div>
+
+        <div className="space-y-3">
+          {studentNotifications.length > 0 ? (
+            studentNotifications
+              .slice()
+              .sort((a, b) => b.createdAt.seconds - a.createdAt.seconds)
+              .slice(0, 3)
+              .map((n) => (
+                <button
+                  key={n.id}
+                  onClick={() => setActiveTab("notifications")}
+                  className="w-full text-left bg-white border border-gray-100 rounded-[20px] p-4 shadow-sm cursor-pointer active:scale-[0.99] transition-all hover:shadow-md hover:border-indigo-100"
+                >
+                  <div className="flex items-start gap-3">
+                    <div
+                      className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                        n.type === "fee"
+                          ? "bg-amber-100"
+                          : n.type === "instruction"
+                            ? "bg-violet-100"
+                            : "bg-indigo-100"
+                      }`}
+                    >
+                      <MessageSquare
+                        className={`w-4 h-4 ${
+                          n.type === "fee"
+                            ? "text-amber-700"
+                            : n.type === "instruction"
+                              ? "text-violet-700"
+                              : "text-indigo-700"
+                        }`}
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">{n.type}</p>
+                        <span className="text-[10px] text-gray-400 font-medium">
+                          {new Date(n.createdAt.seconds * 1000).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <p className="text-sm font-bold text-gray-900 line-clamp-2">{n.title}</p>
+                      <p className="text-[10px] text-gray-400 font-medium mt-1 line-clamp-1">{n.message}</p>
+                    </div>
+                  </div>
+                </button>
+              ))
+          ) : (
+            <div className="bg-white border border-dashed border-gray-200 rounded-[32px] p-10 text-center">
+              <MessageSquare className="w-8 h-8 text-gray-200 mx-auto mb-2" />
+              <p className="text-xs text-gray-400 font-medium">No notifications yet.</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Latest Remarks */}
       <div className="mt-8 animate-fade-slide-up delay-400">
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-lg font-black text-gray-900">Teacher Remarks</h3>
-          <span className="text-[10px] font-black uppercase text-gray-300 tracking-widest">Recent</span>
+          <button 
+            onClick={() => setActiveTab("remarks_history")}
+            className="text-[10px] font-black uppercase text-indigo-500 tracking-widest"
+          >
+            View All
+          </button>
         </div>
         
-        <div className="bg-white border border-dashed border-gray-200 rounded-[32px] p-10 text-center">
-          <MessageSquare className="w-8 h-8 text-gray-200 mx-auto mb-2" />
-          <p className="text-xs text-gray-400 font-medium">No remarks from teachers yet.</p>
+        <div className="space-y-3">
+          {studentRemarks.length > 0 ? (
+            studentRemarks.slice(0, 3).map((remark) => (
+              <div
+                key={remark.id}
+                onClick={() => {
+                  setSelectedRemark(remark);
+                  setShowRemarkDetail(true);
+                }}
+                className="bg-white border border-gray-100 rounded-[20px] p-4 shadow-sm cursor-pointer active:scale-[0.99] transition-all hover:shadow-md hover:border-indigo-100"
+              >
+                <div className="flex items-start gap-3">
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                    remark.type === 'academic' ? 'bg-blue-100' :
+                    remark.type === 'behavior' ? 'bg-rose-100' : 'bg-green-100'
+                  }`}>
+                    <MessageSquare className={`w-4 h-4 ${
+                      remark.type === 'academic' ? 'text-blue-600' :
+                        remark.type === 'behavior' ? 'text-rose-600' : 'text-green-600'
+                    }`} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                        {remark.type}
+                      </p>
+                      <span className="text-[10px] text-gray-400 font-medium">
+                        {new Date(remark.createdAt.seconds * 1000).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <p className="text-sm font-bold text-gray-900 line-clamp-2">{remark.message}</p>
+                    <p className="text-[10px] text-gray-400 font-medium mt-1">
+                      by {remark.teacherName}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="bg-white border border-dashed border-gray-200 rounded-[32px] p-10 text-center">
+              <MessageSquare className="w-8 h-8 text-gray-200 mx-auto mb-2" />
+              <p className="text-xs text-gray-400 font-medium">No remarks from teachers yet.</p>
+            </div>
+          )}
         </div>
       </div>
 

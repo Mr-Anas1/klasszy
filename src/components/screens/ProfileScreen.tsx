@@ -12,10 +12,10 @@ import {
   School as SchoolIcon,
   Edit3,
 } from "lucide-react";
-import { useApp } from "@/context/AppContext";
+import { useApp, StudentPersonalDetails } from "@/context/AppContext";
 
 export default function ProfileScreen() {
-  const { user, school, logout } = useApp();
+  const { user, school, logout, students, studentDetails } = useApp();
   if (!user) return null;
 
   const MENU_ITEMS = [
@@ -25,6 +25,10 @@ export default function ProfileScreen() {
   ];
 
   const avatar = user.name.split(" ").map(n => n[0]).join("");
+
+  // Get student and their personal details for parent
+  const currentStudent = user.role === "parent" ? students.find(s => s.parentId === user.id) : null;
+  const studentPersonalDetails = currentStudent ? studentDetails.find(d => d.studentId === currentStudent.id) : null;
 
   return (
     <div className="pb-36 px-5 pt-4">
@@ -89,6 +93,76 @@ export default function ProfileScreen() {
           </div>
         </div>
       </div>
+
+      {/* Student Personal Details - Only show for parents */}
+      {user.role === "parent" && currentStudent && (
+        <div className="animate-fade-slide-up delay-150 mt-4 bg-white rounded-[28px] p-6 border border-gray-100 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Student Personal Details</p>
+            <span className="text-[10px] font-black uppercase text-indigo-500 tracking-widest">
+              {currentStudent.name}
+            </span>
+          </div>
+          
+          {studentPersonalDetails ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-indigo-100 rounded-xl flex items-center justify-center shrink-0">
+                  <span className="text-[10px] font-black text-indigo-600">F</span>
+                </div>
+                <div className="flex-1">
+                  <p className="text-[9px] font-black uppercase text-gray-400 tracking-wider">Father's Name</p>
+                  <p className="text-sm font-bold text-gray-800">{studentPersonalDetails.fatherName || "Not specified"}</p>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-rose-100 rounded-xl flex items-center justify-center shrink-0">
+                  <span className="text-[10px] font-black text-rose-600">M</span>
+                </div>
+                <div className="flex-1">
+                  <p className="text-[9px] font-black uppercase text-gray-400 tracking-wider">Mother's Name</p>
+                  <p className="text-sm font-bold text-gray-800">{studentPersonalDetails.motherName || "Not specified"}</p>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-blue-100 rounded-xl flex items-center justify-center shrink-0">
+                  <span className="text-[10px] font-black text-blue-600">D</span>
+                </div>
+                <div className="flex-1">
+                  <p className="text-[9px] font-black uppercase text-gray-400 tracking-wider">Date of Birth</p>
+                  <p className="text-sm font-bold text-gray-800">{studentPersonalDetails.dateOfBirth || "Not specified"}</p>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-red-100 rounded-xl flex items-center justify-center shrink-0">
+                  <span className="text-[10px] font-black text-red-600">B</span>
+                </div>
+                <div className="flex-1">
+                  <p className="text-[9px] font-black uppercase text-gray-400 tracking-wider">Blood Group</p>
+                  <p className="text-sm font-bold text-gray-800">{studentPersonalDetails.bloodGroup || "Not specified"}</p>
+                </div>
+              </div>
+              
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 bg-green-100 rounded-xl flex items-center justify-center shrink-0 mt-0.5">
+                  <span className="text-[10px] font-black text-green-600">A</span>
+                </div>
+                <div className="flex-1">
+                  <p className="text-[9px] font-black uppercase text-gray-400 tracking-wider">Address</p>
+                  <p className="text-sm font-bold text-gray-800">{studentPersonalDetails.address || "Not specified"}</p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-6">
+              <p className="text-xs text-gray-400 font-medium">No personal details added yet</p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Menu items */}
       <div className="animate-fade-slide-up delay-200 mt-4 bg-white rounded-[28px] border border-gray-100 overflow-hidden shadow-sm">

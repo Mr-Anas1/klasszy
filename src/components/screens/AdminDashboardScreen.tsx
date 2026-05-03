@@ -16,29 +16,30 @@ import {
   Trash2,
   MoreVertical,
   BookOpen,
-  FileEdit
+  FileEdit,
+  Bell
 } from "lucide-react";
 import { useApp, STANDARD_GRADES, Student, ClassRoom, UserProfile, UserRole } from "@/context/AppContext";
 
 export default function AdminDashboardScreen() {
-  const { students, classes, usersList, circulars, school, addStudent, addClass, updateTeacherClasses, onboardUser, updateStudent, deleteStudent, updateClass, deleteClass, deleteUser, sendCircular, deleteCircular, showAlert, showConfirm, setActiveTab, setSelectedCircular, updateUserProfile } = useApp();
+  const { students, classes, usersList, circulars, school, addStudent, addClass, updateTeacherClasses, onboardUser, updateStudent, deleteStudent, updateClass, deleteClass, deleteUser, sendCircular, deleteCircular, showAlert, showConfirm, activeTab, setActiveTab, setSelectedCircular, updateUserProfile, setSelectedStudent, selectedTeacher, setSelectedTeacher, updateStudentPersonalDetails, sendNotification } = useApp();
 
   const [view, setView] = useState<"main" | "grade_details" | "section_details" | "teacher_management">("main");
   const [selectedGrade, setSelectedGrade] = useState<string | null>(null);
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
-  const [selectedTeacher, setSelectedTeacher] = useState<UserProfile | null>(null);
 
   const [showAddClass, setShowAddClass] = useState(false);
   const [showAddStudent, setShowAddStudent] = useState(false);
   const [showAddTeacher, setShowAddTeacher] = useState(false);
   const [showAddCircular, setShowAddCircular] = useState(false);
+  const [showSendNotification, setShowSendNotification] = useState(false);
 
   const portalTarget = useMemo(() => {
     if (typeof document === "undefined") return null;
     return document.body;
   }, []);
 
-  const anyDashboardModalOpen = showAddClass || showAddStudent || showAddTeacher || showAddCircular;
+  const anyDashboardModalOpen = showAddClass || showAddStudent || showAddTeacher || showAddCircular || showSendNotification;
 
   useEffect(() => {
     if (!anyDashboardModalOpen) return;
@@ -49,15 +50,32 @@ export default function AdminDashboardScreen() {
     };
   }, [anyDashboardModalOpen]);
 
-  // Edit states
-  const [editingItem, setEditingItem] = useState<{ type: "teacher" | "student" | "class"; id: string } | null>(null);
-  const [studentSearch, setStudentSearch] = useState("");
-
   // Form states
-  const [sData, setSData] = useState({ name: "", parentId: "", email: "", password: "", classId: "" });
   const [cData, setCData] = useState({ grade: STANDARD_GRADES[0], section: "A", customSection: "" });
+  const [sData, setSData] = useState({ 
+    name: "", 
+    classId: "", 
+    username: "", 
+    password: "", 
+    email: "",
+    fatherName: "",
+    motherName: "",
+    dateOfBirth: "",
+    bloodGroup: "",
+    address: ""
+  });
   const [tData, setTData] = useState({ name: "", email: "", password: "", classIds: [] as string[] });
   const [circData, setCircData] = useState({ title: "", content: "", imageUrl: "", targetAudience: "both" as "teachers" | "parents" | "both" });
+  const [nData, setNData] = useState({
+    title: "",
+    message: "",
+    type: "general" as "fee" | "general" | "instruction",
+    targetType: "class" as "student" | "class",
+    targetId: ""
+  });
+  const [notifClassId, setNotifClassId] = useState<string>("");
+  const [notifClassQuery, setNotifClassQuery] = useState("");
+  const [notifStudentQuery, setNotifStudentQuery] = useState("");
 
   const teachers = usersList.filter(u => u.role === "teacher");
 
@@ -74,11 +92,26 @@ export default function AdminDashboardScreen() {
     setShowAddStudent(false);
     setShowAddTeacher(false);
     setShowAddCircular(false);
-    setEditingItem(null);
-    setSelectedTeacher(null);
-    setSData({ name: "", parentId: "", email: "", password: "", classId: "" });
+    setShowSendNotification(false);
+    setSData({ 
+      name: "", 
+      classId: "", 
+      username: "", 
+      password: "", 
+      email: "",
+      fatherName: "",
+      motherName: "",
+      dateOfBirth: "",
+      bloodGroup: "",
+      address: ""
+    });
     setTData({ name: "", email: "", password: "", classIds: [] });
+    setCData({ grade: STANDARD_GRADES[0], section: "A", customSection: "" });
     setCircData({ title: "", content: "", imageUrl: "", targetAudience: "both" });
+    setNData({ title: "", message: "", type: "general", targetType: "class", targetId: "" });
+    setNotifClassId("");
+    setNotifClassQuery("");
+    setNotifStudentQuery("");
   };
 
   const handleAddUser = async (role: UserRole) => {
@@ -104,15 +137,43 @@ export default function AdminDashboardScreen() {
 
   const parents = usersList.filter(u => u.role === "parent");
 
-  const handleAddStudentWithCreds = async (name: string, classId: string, username: string, password?: string) => {
+  const handleAddStudentWithCreds = async (name: string, classId: string, username: string, password?: string, personalDetails?: {
+    fatherName: string;
+    motherName: string;
+    dateOfBirth: string;
+    bloodGroup: string;
+    address: string;
+  }) => {
     if (name && classId) {
-      await addStudent({
-        name,
-        classId,
-        username,
-        password
-      });
-      resetModals();
+      try {
+        // First create the student
+        await addStudent({
+          name,
+          classId,
+          username,
+          password
+        });
+        
+        // Then save personal details if provided
+        if (personalDetails && (personalDetails.fatherName || personalDetails.motherName || personalDetails.dateOfBirth || personalDetails.bloodGroup || personalDetails.address)) {
+          // Find the newly created student to get their ID
+          const newStudent = students.find(s => s.name === name && s.classId === classId && s.username === username);
+          if (newStudent) {
+            await updateStudentPersonalDetails(newStudent.id, {
+              fatherName: personalDetails.fatherName,
+              motherName: personalDetails.motherName,
+              bloodGroup: personalDetails.bloodGroup,
+              dateOfBirth: personalDetails.dateOfBirth,
+              parentPhone: "", // Will be updated later
+              address: personalDetails.address
+            });
+          }
+        }
+        
+        resetModals();
+      } catch (error) {
+        console.error("Error adding student:", error);
+      }
     }
   };
 
@@ -130,39 +191,7 @@ export default function AdminDashboardScreen() {
     );
   };
 
-  const handleUpdate = async () => {
-    if (!editingItem) return;
-    const { type, id } = editingItem;
-    
-    const performUpdate = async () => {
-      if (type === "student") {
-        await updateStudent(id, { name: sData.name, parentId: sData.parentId });
-        await updateUserProfile(sData.parentId, { email: sData.email }); // Update parent/user email
-      } else if (type === "teacher") {
-        await updateUserProfile(id, { name: tData.name, email: tData.email, classIds: tData.classIds });
-      } else if (type === "class") {
-        const finalSection = cData.section === "custom" ? cData.customSection : cData.section;
-        await updateClass(id, { name: cData.grade, section: finalSection });
-      }
-      resetModals();
-      showAlert("Updated", "Profile has been updated successfully.", "success");
-    };
-
-    // Sensitive change confirmation
-    const original = type === "teacher" ? teachers.find(t => t.id === id) : type === "student" ? students.find(s => s.id === id) : null;
-    const emailChanged = (type === "teacher" && (original as UserProfile)?.email !== tData.email) || (type === "student" && parents.find(p => p.id === (original as Student)?.parentId)?.email !== sData.email);
-    
-    if (emailChanged || (type === "teacher" && tData.password)) {
-      showConfirm(
-        "Sensitive Changes Detected",
-        "You are changing login credentials (email or password). This may affect the user's ability to login. Proceed?",
-        performUpdate
-      );
-    } else {
-      performUpdate();
-    }
-  };
-
+  
   const toggleTeacherClass = async (teacher: UserProfile, classId: string) => {
     const currentIds = teacher.classIds || [];
     const newIds = currentIds.includes(classId) 
@@ -178,6 +207,25 @@ export default function AdminDashboardScreen() {
       resetModals();
     }
   };
+
+  const handleSendNotification = async () => {
+    if (!nData.title || !nData.message || !nData.targetId) {
+      showAlert("Missing Info", "Please fill in Title, Message, and Target.", "error");
+      return;
+    }
+    await sendNotification(nData);
+    showAlert("Notification Sent", "The notification has been sent successfully.", "success");
+    resetModals();
+  };
+
+  const filteredNotifClasses = classes.filter((c) => {
+    const label = `${c.name}-${c.section}`.toLowerCase();
+    return label.includes(notifClassQuery.trim().toLowerCase());
+  });
+
+  const filteredNotifStudents = students
+    .filter((s) => (notifClassId ? s.classId === notifClassId : true))
+    .filter((s) => s.name.toLowerCase().includes(notifStudentQuery.trim().toLowerCase()));
 
   const renderContent = () => {
     if (view === "teacher_management" && selectedTeacher) {
@@ -198,11 +246,11 @@ export default function AdminDashboardScreen() {
           {classes.map((c) => (
             <button 
               key={c.id} 
-              onClick={() => toggleTeacherClass(t, c.id)}
-              className={`w-full rounded-[24px] p-5 border flex items-center justify-between transition-all ${t.classIds?.includes(c.id) ? "bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-100" : "bg-white border-gray-100 text-gray-900"}`}
+              onClick={() => t && toggleTeacherClass(t, c.id)}
+              className={`w-full rounded-[24px] p-5 border flex items-center justify-between transition-all ${t?.classIds?.includes(c.id) ? "bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-100" : "bg-white border-gray-100 text-gray-900"}`}
             >
               <div className="flex items-center gap-4">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black ${t.classIds?.includes(c.id) ? "bg-white/20" : "bg-indigo-50 text-indigo-600"}`}>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black ${t?.classIds?.includes(c.id) ? "bg-white/20" : "bg-indigo-50 text-indigo-600"}`}>
                   {c.section}
                 </div>
                 <p className="font-black">{c.name}-{c.section}</p>
@@ -312,29 +360,22 @@ export default function AdminDashboardScreen() {
               <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center shrink-0 uppercase font-black text-gray-400">
                 {s.name[0]}
               </div>
-              <div className="flex-1">
+              <button 
+                onClick={() => {
+                  setSelectedStudent(s);
+                  setActiveTab("student_detail");
+                }}
+                className="flex-1 text-left"
+              >
                 <h4 className="text-sm font-black text-gray-900">{s.name}</h4>
                 <p className="text-[10px] text-gray-400 font-medium uppercase tracking-widest">ID: {s.id.slice(0, 8)}</p>
-              </div>
-              <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button 
-                  onClick={() => { 
-                    const parent = parents.find(p => p.id === s.parentId);
-                    setSData({ name: s.name, parentId: s.parentId, email: parent?.email || "", classId: s.classId, password: "" });
-                    setEditingItem({ type: "student", id: s.id });
-                    setShowAddStudent(true); 
-                  }} 
-                  className="w-8 h-8 bg-gray-50 rounded-xl flex items-center justify-center text-gray-400 hover:text-indigo-600"
-                >
-                  <FileEdit className="w-4 h-4" />
-                </button>
-                <button 
-                  onClick={() => handleDelete("student", s.id)} 
-                  className="w-8 h-8 bg-gray-50 rounded-xl flex items-center justify-center text-gray-400 hover:text-rose-600"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
+              </button>
+              <button 
+                onClick={() => handleDelete("student", s.id)} 
+                className="w-8 h-8 bg-rose-50 text-rose-500 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-rose-500 hover:text-white"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
             </div>
           ))}
           {sectionStudents.length === 0 && (
@@ -406,12 +447,22 @@ export default function AdminDashboardScreen() {
       <div className="mb-10">
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-lg font-black text-gray-900">School Circulars</h3>
-          <button 
-            onClick={() => setShowAddCircular(true)}
-            className="text-[10px] font-black uppercase text-indigo-500 tracking-widest flex items-center gap-1"
-          >
-            <Plus className="w-3 h-3" /> New Circular
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowSendNotification(true)}
+              className="px-4 py-2.5 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-indigo-100 active:scale-95 transition-all"
+            >
+              <Bell className="w-3.5 h-3.5" />
+              Notify
+            </button>
+            <button
+              onClick={() => setShowAddCircular(true)}
+              className="px-4 py-2.5 bg-white border border-gray-100 text-indigo-600 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-sm active:scale-95 transition-all hover:border-indigo-100"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Circular
+            </button>
+          </div>
         </div>
         <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2">
           {circulars.slice(0, 3).map((c) => (
@@ -470,7 +521,10 @@ export default function AdminDashboardScreen() {
           {teachers.slice(0, 3).map((t) => (
             <div key={t.id} className="group relative">
               <div 
-                onClick={() => { setSelectedTeacher(t); setView("teacher_management"); }}
+                onClick={() => { 
+                setSelectedTeacher(t); 
+                setActiveTab("teacher_detail");
+              }}
                 className="w-full bg-white rounded-[28px] p-5 border border-gray-100 flex items-center gap-4 shadow-sm active:scale-[0.98] transition-all cursor-pointer hover:border-indigo-100"
               >
                 <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center shrink-0">
@@ -489,25 +543,12 @@ export default function AdminDashboardScreen() {
                     {t.classIds?.length || 0} Assigned Classes
                   </p>
                 </div>
-                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button 
-                    onClick={(e) => { 
-                      e.stopPropagation(); 
-                      setTData({ name: t.name, email: t.email, password: "", classIds: t.classIds || [] });
-                      setEditingItem({ type: "teacher", id: t.id });
-                      setShowAddTeacher(true);
-                    }} 
-                    className="w-8 h-8 bg-gray-50 rounded-xl flex items-center justify-center text-gray-400 hover:text-indigo-600 active:scale-90 transition-all"
-                  >
-                    <FileEdit className="w-4 h-4" />
-                  </button>
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); handleDelete("teacher", t.id); }} 
-                    className="w-8 h-8 bg-gray-50 rounded-xl flex items-center justify-center text-gray-400 hover:text-rose-600 active:scale-90 transition-all"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); handleDelete("teacher", t.id); }} 
+                  className="w-8 h-8 bg-rose-50 text-rose-500 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-rose-500 hover:text-white active:scale-90"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
                 <ChevronRight className="w-5 h-5 text-gray-200" />
               </div>
             </div>
@@ -549,31 +590,24 @@ export default function AdminDashboardScreen() {
                 <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center shrink-0">
                   <span className="text-sm font-black text-emerald-700 uppercase">{s.name[0]}</span>
                 </div>
-                <div className="flex-1">
+                <button 
+                  onClick={() => {
+                    setSelectedStudent(s);
+                    setActiveTab("student_detail");
+                  }}
+                  className="flex-1 text-left"
+                >
                   <h4 className="text-sm font-black text-gray-900">{s.name}</h4>
                   <p className="text-[10px] text-gray-400 font-medium uppercase tracking-widest">
                     Class: {classes.find(c => c.id === s.classId)?.name}-{classes.find(c => c.id === s.classId)?.section || "Unassigned"}
                   </p>
-                </div>
-                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button 
-                    onClick={() => { 
-                      const parent = parents.find(p => p.id === s.parentId);
-                      setSData({ name: s.name, parentId: s.parentId, email: parent?.email || "", classId: s.classId, password: "" });
-                      setEditingItem({ type: "student", id: s.id });
-                      setShowAddStudent(true);
-                    }} 
-                    className="w-8 h-8 bg-gray-50 rounded-xl flex items-center justify-center text-gray-400 hover:text-indigo-600 active:scale-90 transition-all"
-                  >
-                    <FileEdit className="w-4 h-4" />
-                  </button>
-                  <button 
-                    onClick={() => handleDelete("student", s.id)} 
-                    className="w-8 h-8 bg-gray-50 rounded-xl flex items-center justify-center text-gray-400 hover:text-rose-600 active:scale-90 transition-all"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
+                </button>
+                <button 
+                  onClick={() => handleDelete("student", s.id)} 
+                  className="w-8 h-8 bg-rose-50 text-rose-500 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-rose-500 hover:text-white active:scale-90"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
             </div>
           ))}
@@ -659,7 +693,7 @@ export default function AdminDashboardScreen() {
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={resetModals} />
           <div className="relative w-full max-w-md bg-white rounded-[40px] p-8 animate-scale-in shadow-2xl max-h-[90vh] overflow-y-auto no-scrollbar">
             <h3 className="text-2xl font-black text-gray-900 mb-8 text-center">
-              {editingItem ? "Edit Teacher" : "Register Teacher"}
+              Register Teacher
             </h3>
             <div className="space-y-6">
               <div>
@@ -671,8 +705,8 @@ export default function AdminDashboardScreen() {
                 <input type="email" value={tData.email} onChange={(e) => setTData({ ...tData, email: e.target.value })} placeholder="email@school.edu" className="w-full bg-gray-50 border-2 border-transparent rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:bg-white focus:border-indigo-100 transition-all" />
               </div>
               <div>
-                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">{editingItem ? "Change Password (optional)" : "Login Password"}</label>
-                <input type="text" value={tData.password} onChange={(e) => setTData({ ...tData, password: e.target.value })} placeholder={editingItem ? "Leave empty to keep current" : "Default: password123"} className="w-full bg-gray-50 border-2 border-transparent rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:bg-white focus:border-indigo-100 transition-all" />
+                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">Login Password</label>
+                <input type="text" value={tData.password} onChange={(e) => setTData({ ...tData, password: e.target.value })} placeholder="Default: password123" className="w-full bg-gray-50 border-2 border-transparent rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:bg-white focus:border-indigo-100 transition-all" />
               </div>
               
               <div>
@@ -699,13 +733,10 @@ export default function AdminDashboardScreen() {
             <div className="mt-10 flex gap-4">
               <button onClick={resetModals} className="flex-1 bg-gray-50 text-gray-400 font-black py-5 rounded-[24px] text-xs uppercase tracking-widest">Cancel</button>
               <button 
-                onClick={() => {
-                  if (editingItem) handleUpdate();
-                  else handleAddUser("teacher");
-                }} 
+                onClick={() => handleAddUser("teacher")}
                 className="flex-1 bg-indigo-600 text-white font-black py-5 rounded-[24px] text-xs uppercase tracking-widest shadow-xl"
               >
-                {editingItem ? "Update" : "Confirm"}
+                Confirm
               </button>
             </div>
           </div>
@@ -718,7 +749,7 @@ export default function AdminDashboardScreen() {
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={resetModals} />
           <div className="relative w-full max-w-md bg-white rounded-[40px] p-8 animate-scale-in shadow-2xl max-h-[90vh] overflow-y-auto no-scrollbar">
             <h3 className="text-2xl font-black text-gray-900 mb-8 text-center">
-              {editingItem ? "Edit Student" : `New Student Entry`}
+              New Student Entry
             </h3>
             <div className="space-y-6">
               <div>
@@ -731,14 +762,10 @@ export default function AdminDashboardScreen() {
                 <input type="text" value={sData.email} onChange={(e) => setSData({ ...sData, email: e.target.value })} placeholder="e.g. john_doe_parent" className="w-full bg-gray-50 border-2 border-transparent rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:bg-white focus:border-indigo-100 transition-all" />
               </div>
 
-              {!editingItem && (
-                <>
-                  <div>
-                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">Login Password</label>
-                    <input type="text" value={sData.password} onChange={(e) => setSData({ ...sData, password: e.target.value })} placeholder="Default: password123" className="w-full bg-gray-50 border-2 border-transparent rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:bg-white focus:border-indigo-100 transition-all" />
-                  </div>
-                </>
-              )}
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">Login Password</label>
+                <input type="text" value={sData.password} onChange={(e) => setSData({ ...sData, password: e.target.value })} placeholder="Default: password123" className="w-full bg-gray-50 border-2 border-transparent rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:bg-white focus:border-indigo-100 transition-all" />
+              </div>
               
               {view !== "section_details" ? (
                 <div>
@@ -761,24 +788,93 @@ export default function AdminDashboardScreen() {
                   <p className="text-lg font-black text-indigo-900">{selectedGrade}-{selectedSection}</p>
                 </div>
               )}
-            </div>
-            <div className="mt-10 flex gap-4">
-              <button onClick={resetModals} className="flex-1 bg-gray-50 text-gray-400 font-black py-5 rounded-[24px] text-xs uppercase tracking-widest">Cancel</button>
-              <button 
-                onClick={() => {
-                  if (editingItem) handleUpdate();
-                  else {
-                    if (sData.name && sData.email && sData.classId) {
-                      handleAddStudentWithCreds(sData.name, sData.classId, sData.email, sData.password);
-                    } else {
-                      showAlert("Missing Info", "Please fill in all mandatory fields.", "error");
+              
+              <div className="border-t pt-6 mt-6">
+                <p className="text-xs font-black text-gray-400 uppercase tracking-wider mb-4">Personal Details</p>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">Father's Name</label>
+                    <input 
+                      type="text" 
+                      value={sData.fatherName} 
+                      onChange={(e) => setSData({ ...sData, fatherName: e.target.value })} 
+                      placeholder="Father's Full Name" 
+                      className="w-full bg-gray-50 border-2 border-transparent rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:bg-white focus:border-indigo-100 transition-all" 
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">Mother's Name</label>
+                    <input 
+                      type="text" 
+                      value={sData.motherName} 
+                      onChange={(e) => setSData({ ...sData, motherName: e.target.value })} 
+                      placeholder="Mother's Full Name" 
+                      className="w-full bg-gray-50 border-2 border-transparent rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:bg-white focus:border-indigo-100 transition-all" 
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">Date of Birth</label>
+                    <input 
+                      type="date" 
+                      value={sData.dateOfBirth} 
+                      onChange={(e) => setSData({ ...sData, dateOfBirth: e.target.value })} 
+                      className="w-full bg-gray-50 border-2 border-transparent rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:bg-white focus:border-indigo-100 transition-all" 
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">Blood Group</label>
+                    <select 
+                      value={sData.bloodGroup} 
+                      onChange={(e) => setSData({ ...sData, bloodGroup: e.target.value })} 
+                      className="appearance-none w-full bg-gray-50 border-2 border-transparent rounded-2xl px-5 py-4 text-sm font-black text-gray-900 focus:outline-none focus:bg-white focus:border-indigo-100 transition-all"
+                    >
+                      <option value="">Select Blood Group...</option>
+                      <option value="A+">A+</option>
+                      <option value="A-">A-</option>
+                      <option value="B+">B+</option>
+                      <option value="B-">B-</option>
+                      <option value="AB+">AB+</option>
+                      <option value="AB-">AB-</option>
+                      <option value="O+">O+</option>
+                      <option value="O-">O-</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">Address</label>
+                    <textarea 
+                      value={sData.address} 
+                      onChange={(e) => setSData({ ...sData, address: e.target.value })} 
+                      placeholder="Complete Address" 
+                      rows={3}
+                      className="w-full bg-gray-50 border-2 border-transparent rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:bg-white focus:border-indigo-100 transition-all resize-none" 
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="mt-10 flex gap-4">
+                <button onClick={resetModals} className="flex-1 bg-gray-50 text-gray-400 font-black py-5 rounded-[24px] text-xs uppercase tracking-widest">Cancel</button>
+                <button 
+                  onClick={() => {
+                    if (sData.name && sData.username && sData.classId) {
+                      handleAddStudentWithCreds(sData.name, sData.classId, sData.username, sData.password, {
+                        fatherName: sData.fatherName,
+                        motherName: sData.motherName,
+                        dateOfBirth: sData.dateOfBirth,
+                        bloodGroup: sData.bloodGroup,
+                        address: sData.address
+                      });
                     }
-                  }
-                }} 
-                className="flex-1 bg-indigo-600 text-white font-black py-5 rounded-[24px] text-xs uppercase tracking-widest shadow-xl"
-              >
-                {editingItem ? "Save Changes" : "Create Account"}
-              </button>
+                  }} 
+                  className="flex-1 bg-indigo-600 text-white font-black py-5 rounded-[24px] text-xs uppercase tracking-widest shadow-xl"
+                >
+                  Create Account
+                </button>
+              </div>
             </div>
           </div>
         </div>,
@@ -825,6 +921,153 @@ export default function AdminDashboardScreen() {
             <div className="mt-10 flex gap-4">
               <button onClick={resetModals} className="flex-1 bg-gray-50 text-gray-400 font-black py-5 rounded-[24px] text-xs uppercase tracking-widest">Cancel</button>
               <button onClick={handleSendCircular} className="flex-1 bg-indigo-600 text-white font-black py-5 rounded-[24px] text-xs uppercase tracking-widest shadow-xl">Post Circular</button>
+            </div>
+          </div>
+        </div>,
+        portalTarget
+      ) : null}
+
+      {portalTarget && showSendNotification ? createPortal(
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center px-4 overflow-x-hidden">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={resetModals} />
+          <div className="relative w-full max-w-md bg-white rounded-[40px] p-8 animate-scale-in shadow-2xl max-h-[90vh] overflow-y-auto no-scrollbar">
+            <h3 className="text-2xl font-black text-gray-900 mb-8 text-center">Send Notification</h3>
+
+            <div className="space-y-5">
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">Type</label>
+                <div className="relative">
+                  <select
+                    value={nData.type}
+                    onChange={(e) => setNData({ ...nData, type: e.target.value as any })}
+                    className="appearance-none w-full bg-gray-50 border-2 border-transparent rounded-2xl px-5 py-4 text-sm font-black text-gray-900 focus:outline-none focus:bg-white focus:border-indigo-100 transition-all"
+                  >
+                    <option value="general">General</option>
+                    <option value="instruction">Instruction</option>
+                    <option value="fee">Fee</option>
+                  </select>
+                  <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">Target</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => {
+                      setNData({ ...nData, targetType: "class", targetId: "" });
+                      setNotifStudentQuery("");
+                    }}
+                    className={`py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all ${nData.targetType === "class" ? "bg-indigo-600 border-indigo-600 text-white" : "bg-white border-gray-100 text-gray-400"}`}
+                  >
+                    Class
+                  </button>
+                  <button
+                    onClick={() => {
+                      setNData({ ...nData, targetType: "student", targetId: "" });
+                    }}
+                    className={`py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all ${nData.targetType === "student" ? "bg-indigo-600 border-indigo-600 text-white" : "bg-white border-gray-100 text-gray-400"}`}
+                  >
+                    Student
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">Select Class</label>
+                <input
+                  value={notifClassQuery}
+                  onChange={(e) => setNotifClassQuery(e.target.value)}
+                  placeholder="Search class..."
+                  className="w-full bg-gray-50 border-2 border-transparent rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:bg-white focus:border-indigo-100 transition-all"
+                />
+
+                <div className="mt-3 grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-2 bg-gray-50 rounded-2xl no-scrollbar">
+                  {filteredNotifClasses.map((c) => {
+                    const id = c.id;
+                    const active = notifClassId === id;
+                    return (
+                      <button
+                        key={id}
+                        onClick={() => {
+                          setNotifClassId(id);
+                          setNotifStudentQuery("");
+                          if (nData.targetType === "class") {
+                            setNData({ ...nData, targetId: id });
+                          } else {
+                            setNData({ ...nData, targetId: "" });
+                          }
+                        }}
+                        className={`px-3 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${active ? "bg-indigo-600 border-indigo-600 text-white" : "bg-white border-gray-100 text-gray-400"}`}
+                      >
+                        {c.name}-{c.section}
+                      </button>
+                    );
+                  })}
+                  {filteredNotifClasses.length === 0 && (
+                    <p className="col-span-2 text-center py-4 text-[10px] text-gray-400 italic">No classes found</p>
+                  )}
+                </div>
+              </div>
+
+              {nData.targetType === "student" && (
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">Select Student</label>
+                  <input
+                    value={notifStudentQuery}
+                    onChange={(e) => setNotifStudentQuery(e.target.value)}
+                    placeholder={notifClassId ? "Search student in class..." : "Search student..."}
+                    className="w-full bg-gray-50 border-2 border-transparent rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:bg-white focus:border-indigo-100 transition-all"
+                  />
+
+                  <div className="mt-3 space-y-2 max-h-44 overflow-y-auto bg-gray-50 rounded-2xl p-2 no-scrollbar">
+                    {filteredNotifStudents.map((s) => {
+                      const active = nData.targetId === s.id;
+                      return (
+                        <button
+                          key={s.id}
+                          onClick={() => setNData({ ...nData, targetId: s.id })}
+                          className={`w-full text-left px-4 py-3 rounded-2xl border transition-all ${active ? "bg-indigo-600 border-indigo-600 text-white" : "bg-white border-gray-100 text-gray-700 hover:border-indigo-100"}`}
+                        >
+                          <p className={`text-sm font-black ${active ? "text-white" : "text-gray-900"}`}>{s.name}</p>
+                          <p className={`text-[10px] font-bold uppercase tracking-widest mt-0.5 ${active ? "text-white/70" : "text-gray-400"}`}>ID: {s.id.slice(0, 8)}</p>
+                        </button>
+                      );
+                    })}
+                    {filteredNotifStudents.length === 0 && (
+                      <p className="text-center py-4 text-[10px] text-gray-400 italic">
+                        {notifClassId ? "No students found in this class." : "Select a class to filter students."}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">Title</label>
+                <input
+                  type="text"
+                  value={nData.title}
+                  onChange={(e) => setNData({ ...nData, title: e.target.value })}
+                  placeholder="e.g. Fee Reminder"
+                  className="w-full bg-gray-50 border-2 border-transparent rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:bg-white focus:border-indigo-100 transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">Message</label>
+                <textarea
+                  value={nData.message}
+                  onChange={(e) => setNData({ ...nData, message: e.target.value })}
+                  placeholder="Write the notification message..."
+                  className="w-full bg-gray-50 border-2 border-transparent rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:bg-white focus:border-indigo-100 transition-all min-h-[120px]"
+                />
+              </div>
+            </div>
+
+            <div className="mt-10 flex gap-4">
+              <button onClick={resetModals} className="flex-1 bg-gray-50 text-gray-400 font-black py-5 rounded-[24px] text-xs uppercase tracking-widest">Cancel</button>
+              <button onClick={handleSendNotification} className="flex-1 bg-indigo-600 text-white font-black py-5 rounded-[24px] text-xs uppercase tracking-widest shadow-xl">Send</button>
             </div>
           </div>
         </div>,

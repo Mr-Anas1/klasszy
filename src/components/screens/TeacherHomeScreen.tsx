@@ -15,28 +15,38 @@ import {
   X,
   Check,
   Info,
-  BookOpen
+  BookOpen,
+  Bell
 } from "lucide-react";
 
 export default function TeacherHomeScreen() {
-  const { user, classes, students, circulars, homework, addStudent, markAttendance, assignHomework, showAlert, setSelectedCircular, setActiveTab } = useApp();
+  const { user, classes, students, circulars, homework, addStudent, markAttendance, assignHomework, showAlert, setSelectedCircular, setActiveTab, setSelectedStudent, sendNotification } = useApp();
   const teacher = user as UserProfile;
 
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [showAddStudent, setShowAddStudent] = useState(false);
   const [showAttendance, setShowAttendance] = useState(false);
   const [showHomework, setShowHomework] = useState(false);
+  const [showSendNotification, setShowSendNotification] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
   const [tempAttendance, setTempAttendance] = useState<Record<string, "present" | "absent">>({});
   const [hwForm, setHwForm] = useState({ subject: "", task: "", dueDate: "", priority: "Medium" as "High" | "Medium" | "Low" });
   const [sData, setSData] = useState({ name: "", username: "", password: "" });
+  const [nData, setNData] = useState({
+    title: "",
+    message: "",
+    type: "general" as "fee" | "general" | "instruction",
+    targetType: "class" as "student" | "class",
+    targetId: ""
+  });
+  const [notifStudentQuery, setNotifStudentQuery] = useState("");
 
   const portalTarget = useMemo(() => {
     if (typeof document === "undefined") return null;
     return document.body;
   }, []);
 
-  const anyTeacherOverlayOpen = showAddStudent || showHomework || showAttendance;
+  const anyTeacherOverlayOpen = showAddStudent || showHomework || showAttendance || showSendNotification;
 
   useEffect(() => {
     if (!anyTeacherOverlayOpen) return;
@@ -47,9 +57,25 @@ export default function TeacherHomeScreen() {
     };
   }, [anyTeacherOverlayOpen]);
 
+  const handleSendNotification = async () => {
+    if (!nData.title || !nData.message || !nData.targetId) {
+      showAlert("Missing Info", "Please fill in Title, Message, and Target.", "error");
+      return;
+    }
+    await sendNotification(nData);
+    setShowSendNotification(false);
+    setNData({ title: "", message: "", type: "general", targetType: "class", targetId: "" });
+    setNotifStudentQuery("");
+    triggerSuccess("Notification sent!");
+  };
+
   const teacherClasses = classes.filter(c => teacher.classIds?.includes(c.id));
   const selectedClass = classes.find(c => c.id === selectedClassId);
   const filteredStudents = students.filter(s => s.classId === selectedClassId);
+
+  const filteredNotifStudents = filteredStudents.filter((s) =>
+    s.name.toLowerCase().includes(notifStudentQuery.trim().toLowerCase())
+  );
 
   const triggerSuccess = (msg: string) => {
     setSuccessMsg(msg);
@@ -274,6 +300,25 @@ export default function TeacherHomeScreen() {
           </button>
         </div>
 
+        <button
+          onClick={() => {
+            setNData({ ...nData, targetType: "class", targetId: selectedClassId || "" });
+            setShowSendNotification(true);
+          }}
+          className="w-full mb-8 bg-white border border-gray-100 rounded-[28px] p-5 flex items-center justify-between shadow-sm active:scale-[0.99] transition-all hover:shadow-md hover:border-indigo-100"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 bg-indigo-50 rounded-2xl flex items-center justify-center">
+              <Bell className="w-5 h-5 text-indigo-600" />
+            </div>
+            <div className="text-left">
+              <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Reminders</p>
+              <p className="text-sm font-black text-gray-900">Send Notification</p>
+            </div>
+          </div>
+          <ChevronRight className="w-5 h-5 text-gray-200" />
+        </button>
+
         {/* Homework History for this class */}
         <div className="mb-10">
           <div className="flex items-center justify-between mb-5">
@@ -324,9 +369,13 @@ export default function TeacherHomeScreen() {
 
         <div className="space-y-3">
           {filteredStudents.map((s) => (
-            <div 
+            <button
               key={s.id}
-              className="bg-white rounded-[24px] p-4 border border-gray-100 flex items-center gap-4 shadow-sm active:scale-[0.98] transition-all cursor-pointer group"
+              onClick={() => {
+                setSelectedStudent(s);
+                setActiveTab("student_detail");
+              }}
+              className="w-full bg-white rounded-[24px] p-4 border border-gray-100 flex items-center gap-4 shadow-sm active:scale-[0.98] transition-all cursor-pointer group text-left"
             >
               <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center shrink-0 uppercase font-black text-gray-400">
                 {s.name[0]}
@@ -336,7 +385,7 @@ export default function TeacherHomeScreen() {
                 <p className="text-[10px] font-bold text-gray-300 uppercase tracking-wider mt-0.5">ID: {s.id.slice(0, 8)}</p>
               </div>
               <ChevronRight className="w-5 h-5 text-gray-200" />
-            </div>
+            </button>
           ))}
           {filteredStudents.length === 0 && (
             <div className="py-20 text-center text-gray-300 font-medium italic">No students in this class.</div>
@@ -382,6 +431,112 @@ export default function TeacherHomeScreen() {
               >
                 Add Student
               </button>
+            </div>
+          </div>
+        </div>,
+        portalTarget
+      ) : null}
+
+      {/* Notification Modal */}
+      {portalTarget && showSendNotification ? createPortal(
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center px-4 overflow-x-hidden">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowSendNotification(false)} />
+          <div className="relative w-full max-w-md bg-white rounded-[40px] p-8 animate-scale-in shadow-2xl max-h-[90vh] overflow-y-auto no-scrollbar">
+            <h3 className="text-xl font-black text-gray-900 mb-6 text-center">Send Notification</h3>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1 ml-2 block">Type</label>
+                <div className="relative">
+                  <select
+                    value={nData.type}
+                    onChange={(e) => setNData({ ...nData, type: e.target.value as any })}
+                    className="appearance-none w-full bg-gray-50 border-2 border-transparent rounded-2xl px-5 py-4 text-sm font-black text-gray-900 focus:outline-none focus:bg-white focus:border-indigo-100 transition-all"
+                  >
+                    <option value="general">General</option>
+                    <option value="instruction">Instruction</option>
+                    <option value="fee">Fee</option>
+                  </select>
+                  <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1 ml-2 block">Target</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => setNData({ ...nData, targetType: "class", targetId: selectedClassId || "" })}
+                    className={`py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all ${nData.targetType === "class" ? "bg-indigo-600 border-indigo-600 text-white" : "bg-white border-gray-100 text-gray-400"}`}
+                  >
+                    Class
+                  </button>
+                  <button
+                    onClick={() => {
+                      setNData({ ...nData, targetType: "student", targetId: "" });
+                      setNotifStudentQuery("");
+                    }}
+                    className={`py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all ${nData.targetType === "student" ? "bg-indigo-600 border-indigo-600 text-white" : "bg-white border-gray-100 text-gray-400"}`}
+                  >
+                    Student
+                  </button>
+                </div>
+              </div>
+
+              {nData.targetType === "student" && (
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1 ml-2 block">Select Student</label>
+                  <input
+                    value={notifStudentQuery}
+                    onChange={(e) => setNotifStudentQuery(e.target.value)}
+                    placeholder="Search student..."
+                    className="w-full bg-gray-50 border-2 border-transparent rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:bg-white focus:border-indigo-100 transition-all"
+                  />
+
+                  <div className="mt-3 space-y-2 max-h-44 overflow-y-auto bg-gray-50 rounded-2xl p-2 no-scrollbar">
+                    {filteredNotifStudents.map((s) => {
+                      const active = nData.targetId === s.id;
+                      return (
+                        <button
+                          key={s.id}
+                          onClick={() => setNData({ ...nData, targetId: s.id })}
+                          className={`w-full text-left px-4 py-3 rounded-2xl border transition-all ${active ? "bg-indigo-600 border-indigo-600 text-white" : "bg-white border-gray-100 text-gray-700 hover:border-indigo-100"}`}
+                        >
+                          <p className={`text-sm font-black ${active ? "text-white" : "text-gray-900"}`}>{s.name}</p>
+                          <p className={`text-[10px] font-bold uppercase tracking-widest mt-0.5 ${active ? "text-white/70" : "text-gray-400"}`}>ID: {s.id.slice(0, 8)}</p>
+                        </button>
+                      );
+                    })}
+                    {filteredNotifStudents.length === 0 && (
+                      <p className="text-center py-4 text-[10px] text-gray-400 italic">No students found.</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1 ml-2 block">Title</label>
+                <input
+                  value={nData.title}
+                  onChange={(e) => setNData({ ...nData, title: e.target.value })}
+                  placeholder="e.g. Fee Reminder"
+                  className="w-full bg-gray-50 border-2 border-transparent rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:bg-white focus:border-indigo-100 transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1 ml-2 block">Message</label>
+                <textarea
+                  value={nData.message}
+                  onChange={(e) => setNData({ ...nData, message: e.target.value })}
+                  placeholder="Write the notification message..."
+                  className="w-full bg-gray-50 border-2 border-transparent rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:bg-white focus:border-indigo-100 transition-all min-h-[120px]"
+                />
+              </div>
+            </div>
+
+            <div className="mt-8 flex gap-3">
+              <button onClick={() => setShowSendNotification(false)} className="flex-1 bg-gray-50 text-gray-400 font-black py-4 rounded-2xl text-xs uppercase tracking-widest">Cancel</button>
+              <button onClick={handleSendNotification} className="flex-1 bg-indigo-600 text-white font-black py-4 rounded-2xl text-xs uppercase tracking-widest shadow-lg shadow-indigo-100">Send</button>
             </div>
           </div>
         </div>,
