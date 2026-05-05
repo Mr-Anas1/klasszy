@@ -159,6 +159,7 @@ export interface NotificationItem {
   createdByName: string;
   createdByRole: UserRole;
   createdAt: Timestamp;
+  isRead?: boolean;
 }
 
 export interface ClassRoom {
@@ -243,6 +244,7 @@ interface AppContextType {
   classes: ClassRoom[];
   announcements: Announcement[];
   homework: Homework[];
+  homeworkStatus: Record<string, "Pending" | "Completed">;
   attendance: AttendanceRecord[];
   diaryEntries: DiaryEntry[];
   usersList: UserProfile[];
@@ -255,12 +257,14 @@ interface AppContextType {
   notifications: NotificationItem[];
   selectedStudent: Student | null;
   selectedTeacher: UserProfile | null;
+  selectedHomework: Homework | null;
   loading: boolean;
   login: (schoolCode: string, email: string, password: string) => Promise<boolean>;
   logout: () => void;
   setActiveTab: (tab: string) => void;
   setSelectedStudent: (student: Student | null) => void;
   setSelectedTeacher: (teacher: UserProfile | null) => void;
+  setSelectedHomework: (homework: Homework | null) => void;
   addStudent: (data: { name: string; classId: string; username: string; password?: string }) => Promise<void>;
   addClass: (c: Omit<ClassRoom, "id" | "schoolId">) => Promise<void>;
   sendAnnouncement: (title: string, message: string) => Promise<void>;
@@ -294,6 +298,7 @@ interface AppContextType {
     targetType: "student" | "class";
     targetId: string;
   }) => Promise<void>;
+  markNotificationsAsRead: (notificationIds?: string[]) => Promise<void>;
   showAlert: (title: string, message: string, type?: "success" | "error") => void;
   showConfirm: (title: string, message: string, onConfirm: () => void) => void;
   modal: { title: string; message: string; type: "success" | "error" | "confirm"; onConfirm?: () => void } | null;
@@ -316,6 +321,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [homework, setHomework] = useState<Homework[]>([]);
   const [homeworkStatus, setHomeworkStatus] = useState<Record<string, "Pending" | "Completed">>({});
+  const [selectedHomework, setSelectedHomework] = useState<Homework | null>(null);
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [diaryEntries, setDiaryEntries] = useState<DiaryEntry[]>([]);
   const [usersList, setUsersList] = useState<UserProfile[]>([]);
@@ -844,20 +850,40 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     targetId: string;
   }) => {
     if (!school || !user) return;
-    if (!data.title || !data.message || !data.targetId) return;
-
     await addDoc(collection(db, "notifications"), {
+      ...data,
       schoolId: school.id,
-      title: data.title,
-      message: data.message,
-      type: data.type,
       targetType: data.targetType,
       targetId: data.targetId,
       createdById: user.id,
       createdByName: user.name,
       createdByRole: user.role,
-      createdAt: Timestamp.now()
+      createdAt: Timestamp.now(),
+      isRead: false
     });
+  };
+
+  const markNotificationsAsRead = async (notificationIds?: string[]) => {
+    if (!school || !user) return;
+    
+    const currentStudent = students.find(s => s.parentId === user?.id);
+    if (!currentStudent) return;
+    
+    // If no specific IDs provided, mark all notifications for this student as read
+    const notificationsToMark = notificationIds 
+      ? notifications.filter(n => notificationIds.includes(n.id))
+      : notifications.filter(n => 
+          (n.targetType === "student" && n.targetId === currentStudent.id) ||
+          (n.targetType === "class" && n.targetId === currentStudent.classId)
+        );
+    
+    for (const notification of notificationsToMark) {
+      if (!notification.isRead) {
+        await updateDoc(doc(db, "notifications", notification.id), {
+          isRead: true
+        });
+      }
+    }
   };
 
   const [modal, setModal] = useState<AppContextType["modal"]>(null);
@@ -875,12 +901,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   return (
     <AppContext.Provider
       value={{
-        isLoggedIn, userRole, user, school, activeTab, students, classes, announcements, homework, attendance, diaryEntries, usersList, circulars, skillStats, studentDetails, remarks, remarkReplies, leaveApplications, notifications, selectedStudent, selectedTeacher, loading,
-        login, logout, setActiveTab, setSelectedStudent, setSelectedTeacher, addStudent, addClass, sendAnnouncement, assignHomework, markAttendance, toggleDiaryEntry, updateTeacherClasses, onboardUser,
+        isLoggedIn, userRole, user, school, activeTab, students, classes, announcements, homework, homeworkStatus, attendance, diaryEntries, usersList, circulars, skillStats, studentDetails, remarks, remarkReplies, leaveApplications, notifications, selectedStudent, selectedTeacher, selectedHomework, loading,
+        login, logout, setActiveTab, setSelectedStudent, setSelectedTeacher, setSelectedHomework, addStudent, addClass, sendAnnouncement, assignHomework, markAttendance, toggleDiaryEntry, updateTeacherClasses, onboardUser,
         updateStudent, deleteStudent, updateClass, deleteClass, updateUserProfile, deleteUser,
         sendCircular, deleteCircular,
         selectedCircular, setSelectedCircular,
-        updateStudentPersonalDetails, sendRemark, getStudentRemarks, sendRemarkReply, getRemarkReplies, applyLeave, teacherReviewLeave, adminReviewLeave, sendNotification,
+        updateStudentPersonalDetails, sendRemark, getStudentRemarks, sendRemarkReply, getRemarkReplies, applyLeave, teacherReviewLeave, adminReviewLeave, sendNotification, markNotificationsAsRead,
         showAlert, showConfirm, modal, hideModal
       }}
     >

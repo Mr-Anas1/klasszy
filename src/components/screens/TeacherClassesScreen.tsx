@@ -3,17 +3,17 @@
 import React, { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import {
-  ArrowLeft, BookOpen, Calendar, Users, CheckCircle2, Check, X,
+  ArrowLeft, BookOpen, Calendar, Users, CheckCircle2, Check, X, Plus,
 } from "lucide-react";
 import { useApp, UserProfile, ClassRoom } from "@/context/AppContext";
 
-type Action = "none" | "attendance" | "homework";
+type Action = "none" | "attendance" | "homework" | "notification";
 type Priority = "High" | "Medium" | "Low";
 
 export default function TeacherClassesScreen() {
   const {
     user, classes, students, homework,
-    markAttendance, assignHomework,
+    markAttendance, assignHomework, sendNotification, addStudent,
     setActiveTab, setSelectedStudent, showAlert,
   } = useApp();
   const teacher = user as UserProfile;
@@ -31,6 +31,15 @@ export default function TeacherClassesScreen() {
   const [hwForm, setHwForm] = useState({
     subject: "", task: "", dueDate: "", priority: "Medium" as Priority,
   });
+
+  // Notification state
+  const [notifForm, setNotifForm] = useState({
+    title: "", message: "", type: "general" as "fee" | "general" | "instruction"
+  });
+
+  // Add student state
+  const [showAddStudent, setShowAddStudent] = useState(false);
+  const [sData, setSData] = useState({ name: "", username: "", password: "" });
 
   const portalTarget = useMemo(
     () => (typeof document !== "undefined" ? document.body : null),
@@ -87,6 +96,47 @@ export default function TeacherClassesScreen() {
     setHwForm({ subject: "", task: "", dueDate: "", priority: "Medium" });
     setAction("none");
     triggerSuccess("Homework assigned!");
+  };
+
+  const handleSendNotification = async () => {
+    if (!notifForm.title || !notifForm.message || !selectedClass) {
+      showAlert("Missing Info", "Title, message, and class selection are required.", "error");
+      return;
+    }
+    
+    // Send notification to all students in this class (their parents will see it)
+    for (const student of classStudents) {
+      await sendNotification({
+        title: notifForm.title,
+        message: notifForm.message,
+        type: notifForm.type,
+        targetType: "student",
+        targetId: student.id
+      });
+    }
+    
+    setNotifForm({ title: "", message: "", type: "general" });
+    setAction("none");
+    triggerSuccess("Notification sent to all parents!");
+  };
+
+  const handleAddStudent = async () => {
+    if (!selectedClass) return;
+    if (!sData.name || !sData.username) {
+      showAlert("Missing Info", "Student name and username are required.", "error");
+      return;
+    }
+
+    await addStudent({
+      name: sData.name,
+      classId: selectedClass.id,
+      username: sData.username,
+      password: sData.password || undefined,
+    });
+
+    setSData({ name: "", username: "", password: "" });
+    setShowAddStudent(false);
+    triggerSuccess("Student added!");
   };
 
   const presentCount = Object.values(tempAtt).filter(v => v === "present").length;
@@ -208,10 +258,35 @@ export default function TeacherClassesScreen() {
           </button>
         </div>
 
+        {/* Notification Card */}
+        <div className="mb-8">
+          <button
+            onClick={() => setAction("notification")}
+            className="w-full bg-amber-500 text-white p-5 rounded-[28px] flex flex-col gap-3 active:scale-95 transition-transform shadow-lg shadow-amber-200 text-left"
+          >
+            <div className="bg-white/20 w-10 h-10 rounded-xl flex items-center justify-center">
+              <Users className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-sm font-black">Send Notification</p>
+              <p className="text-[10px] text-white/70 mt-0.5">Message all parents</p>
+            </div>
+          </button>
+        </div>
+
         {/* Student List */}
-        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4">
-          Students ({classStudents.length})
-        </p>
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+            Students ({classStudents.length})
+          </p>
+          <button
+            onClick={() => setShowAddStudent(true)}
+            className="w-9 h-9 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-200 active:scale-90 transition-transform"
+            aria-label="Add Student"
+          >
+            <Plus className="w-4 h-4" />
+          </button>
+        </div>
         <div className="space-y-2">
           {classStudents.map(s => (
             <div
@@ -385,6 +460,148 @@ export default function TeacherClassesScreen() {
             >
               Assign Homework
             </button>
+          </div>
+        </div>,
+        portalTarget
+      )}
+
+      {/* ── Notification Modal ───────────────────────────────────────────────── */}
+      {action === "notification" && portalTarget && createPortal(
+        <div className="fixed inset-0 bg-black/60 z-[100] flex items-end">
+          <div className="bg-white w-full rounded-t-[40px] max-h-[90vh] flex flex-col">
+            {/* Header */}
+            <div className="px-6 pt-6 pb-4 flex items-center justify-between border-b border-gray-100 shrink-0">
+              <div>
+                <h3 className="text-xl font-black text-gray-900">Send Notification</h3>
+                <p className="text-[11px] text-gray-400 font-medium mt-0.5">
+                  Message all parents of {selectedClass.name} — {selectedClass.section}
+                </p>
+              </div>
+              <button
+                onClick={() => setAction("none")}
+                className="w-10 h-10 bg-gray-50 rounded-2xl flex items-center justify-center active:scale-90 transition-transform"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Title *</p>
+                <input
+                  type="text"
+                  value={notifForm.title}
+                  onChange={e => setNotifForm(p => ({ ...p, title: e.target.value }))}
+                  placeholder="Enter notification title"
+                  className="w-full bg-gray-50 rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-amber-200"
+                />
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Message *</p>
+                <textarea
+                  value={notifForm.message}
+                  onChange={e => setNotifForm(p => ({ ...p, message: e.target.value }))}
+                  placeholder="Enter your message to parents"
+                  rows={4}
+                  className="w-full bg-gray-50 rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-amber-200 resize-none"
+                />
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Type</p>
+                <div className="flex gap-2">
+                  {(["general", "instruction", "fee"] as const).map(type => (
+                    <button
+                      key={type}
+                      onClick={() => setNotifForm(prev => ({ ...prev, type }))}
+                      className={`flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                        notifForm.type === type
+                          ? type === "general"
+                            ? "bg-amber-500 text-white"
+                            : type === "instruction"
+                            ? "bg-blue-500 text-white"
+                            : "bg-emerald-500 text-white"
+                          : "bg-gray-100 text-gray-500"
+                      }`}
+                    >
+                      {type.charAt(0).toUpperCase() + type.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={handleSendNotification}
+              className="w-full mx-6 mb-6 max-w-xs bg-amber-500 text-white py-3 px-6 rounded-2xl font-black text-sm shadow-lg shadow-amber-200 active:scale-95 transition-transform self-center"
+            >
+              Send Notification
+            </button>
+          </div>
+        </div>,
+        portalTarget
+      )}
+
+      {/* ── Add Student Modal ──────────────────────────────────────────────── */}
+{showAddStudent && portalTarget && selectedClass && createPortal(
+        <div className="fixed inset-0 bg-black/60 z-[100] flex items-end">
+          <div className="bg-white w-full rounded-t-[40px] max-h-[90vh] flex flex-col">
+            {/* Header */}
+            <div className="px-6 pt-6 pb-4 flex items-center justify-between border-b border-gray-100 shrink-0">
+              <div>
+                <h3 className="text-xl font-black text-gray-900">Add Student</h3>
+                <p className="text-[11px] text-gray-400 font-medium mt-0.5">
+                  {selectedClass.name} — {selectedClass.section}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowAddStudent(false)}
+                className="w-10 h-10 bg-gray-50 rounded-2xl flex items-center justify-center active:scale-90 transition-transform"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Student Name *</p>
+                <input
+                  type="text"
+                  value={sData.name}
+                  onChange={e => setSData(p => ({ ...p, name: e.target.value }))}
+                  className="w-full bg-gray-50 rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                />
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Username *</p>
+                <input
+                  type="text"
+                  value={sData.username}
+                  onChange={e => setSData(p => ({ ...p, username: e.target.value }))}
+                  className="w-full bg-gray-50 rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                />
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Password (optional)</p>
+                <input
+                  type="password"
+                  value={sData.password}
+                  onChange={e => setSData(p => ({ ...p, password: e.target.value }))}
+                  className="w-full bg-gray-50 rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                />
+              </div>
+            </div>
+
+            {/* Fixed Footer for Button */}
+            <div className="px-6 pb-8 pt-4 shrink-0 bg-white">
+              <button
+                onClick={handleAddStudent}
+                className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black text-sm shadow-lg shadow-indigo-200 active:scale-95 transition-transform"
+              >
+                Add Student
+              </button>
+            </div>
           </div>
         </div>,
         portalTarget

@@ -33,8 +33,10 @@ import TeacherStudentsScreen from "@/components/screens/TeacherStudentsScreen";
 import HomeScreen from "@/components/screens/HomeScreen";
 import AttendanceScreen from "@/components/screens/AttendanceScreen";
 import DiaryScreen from "@/components/screens/DiaryScreen";
+import DiaryHistoryScreen from "@/components/screens/DiaryHistoryScreen";
 import AnalysisScreen from "@/components/screens/AnalysisScreen";
 import RemarksScreen from "@/components/screens/RemarksScreen";
+import HomeworkDetailScreen from "@/components/screens/HomeworkDetailScreen";
 
 export default function AppShell() {
   const { activeTab, userRole } = useApp();
@@ -52,6 +54,7 @@ export default function AppShell() {
         case "circulars":            return <CircularsScreen />;
         case "view_circular":        return <CircularDetailScreen />;
         case "homework_history":     return <HomeworkHistoryScreen />;
+        case "homework_detail":      return <HomeworkDetailScreen />;
         case "student_detail":       return <StudentDetailScreen />;
         case "teacher_detail":       return <TeacherDetailScreen />;
         case "profile":              return <ProfileScreen />;
@@ -68,6 +71,7 @@ export default function AppShell() {
         case "circulars":            return <CircularsScreen />;
         case "view_circular":        return <CircularDetailScreen />;
         case "homework_history":     return <HomeworkHistoryScreen />;
+        case "homework_detail":      return <HomeworkDetailScreen />;
         case "student_detail":       return <StudentDetailScreen />;
         case "teacher_detail":       return <TeacherDetailScreen />;
         case "profile":              return <ProfileScreen />;
@@ -81,9 +85,11 @@ export default function AppShell() {
         case "notifications":        return <NotificationsScreen />;
         case "attendance":           return <AttendanceScreen />;
         case "diary":                return <DiaryScreen />;
+        case "diary_history":        return <DiaryHistoryScreen />;
         case "circulars":            return <CircularsScreen />;
         case "view_circular":        return <CircularDetailScreen />;
         case "homework_history":     return <HomeworkHistoryScreen />;
+        case "homework_detail":      return <HomeworkDetailScreen />;
         case "remarks_history":      return <RemarksScreen />;
         case "student_detail":       return <StudentDetailScreen />;
         case "teacher_detail":       return <TeacherDetailScreen />;
@@ -96,10 +102,12 @@ export default function AppShell() {
     switch (activeTab) {
       case "attendance":             return <AttendanceScreen />;
       case "diary":                  return <DiaryScreen />;
+      case "diary_history":          return <DiaryHistoryScreen />;
       case "circulars":              return <CircularsScreen />;
       case "view_circular":          return <CircularDetailScreen />;
       case "analysis":               return <AnalysisScreen />;
       case "remarks_history":        return <RemarksScreen />;
+      case "homework_detail":        return <HomeworkDetailScreen />;
       case "profile":                return <ProfileScreen />;
       default:                       return <HomeScreen />;
     }

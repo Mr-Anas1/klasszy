@@ -34,6 +34,20 @@ export default function AttendanceScreen() {
   const lateCount = studentHistory.filter((r) => r.status === "late").length;
   const total = studentHistory.length;
   const pct = total === 0 ? 0 : Math.round((presentCount / total) * 100);
+  
+  // Debug: Log attendance calculation for comparison
+  console.log('AttendanceScreen Debug:', {
+    user: user?.name,
+    userRole: user?.role,
+    myStudentsCount: myStudents.length,
+    primaryStudent: primaryStudent?.name,
+    primaryStudentId: primaryStudent?.id,
+    totalAttendanceRecords: attendance.length,
+    studentHistory: studentHistory.length,
+    presentCount,
+    attendancePct: pct
+  });
+  
   const circumference = 2 * Math.PI * 44;
 
   const statusColor: Record<string, any> = {
