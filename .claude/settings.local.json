@@ -5,7 +5,10 @@
       "Bash(Select-Object -ExpandProperty FullName)",
       "Bash(Sort-Object)",
       "Bash(npx tsc *)",
-      "Bash(npx next *)"
+      "Bash(npx next *)",
+      "Bash(Get-ChildItem -Path \"e:\\\\Ideas\\\\Apps\\\\LMS\\\\lms-app\" -Directory)",
+      "Bash(Select-Object Name)",
+      "Bash(xargs grep *)"
     ]
   }
 }

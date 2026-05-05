@@ -5,16 +5,31 @@ import { Bell, ChevronLeft, User, ShieldCheck, GraduationCap, Users } from "luci
 import { useApp } from "@/context/AppContext";
 
 const TITLES: Record<string, string> = {
-  home: "Dashboard",
-  attendance: "Attendance",
-  diary: "My Tasks",
-  analysis: "Analysis",
-  profile: "Profile",
-  students: "My Students",
-  classes: "My Classes",
-  schools: "Schools",
-  users: "Users",
-  settings: "Settings",
+  home:                 "Dashboard",
+  attendance:           "Attendance",
+  diary:                "My Tasks",
+  diary_history:        "Task History",
+  analysis:             "Analysis",
+  remarks_history:      "Remarks",
+  profile:              "Profile",
+  circulars:            "Circulars",
+  view_circular:        "Circular",
+  notifications:        "Notifications",
+  homework_detail:      "Homework",
+  homework_history:     "Homework History",
+  student_detail:       "Student",
+  teacher_detail:       "Teacher",
+  // Admin
+  manage_users:         "Users",
+  manage_students:      "Students",
+  manage_teachers:      "Teachers",
+  manage_classes:       "Classes",
+  admin_announcements:  "Announcements",
+  admin_activities:     "Activities",
+  // Teacher
+  teacher_classes:      "My Classes",
+  teacher_activities:   "Activities",
+  students:             "My Students",
 };
 
 export default function AppHeader() {
@@ -23,21 +38,22 @@ export default function AppHeader() {
 
   const getRoleBadge = () => {
     switch (userRole) {
-      case "admin": return <ShieldCheck className="w-3.5 h-3.5 text-rose-500" />;
+      case "admin":   return <ShieldCheck className="w-3.5 h-3.5 text-rose-500" />;
       case "teacher": return <Users className="w-3.5 h-3.5 text-violet-500" />;
-      default: return <GraduationCap className="w-3.5 h-3.5 text-indigo-500" />;
+      default:        return <GraduationCap className="w-3.5 h-3.5 text-indigo-500" />;
     }
   };
 
   const getSubTitle = () => {
-    if (userRole === "admin") return "Super Admin";
+    if (userRole === "admin")   return "Super Admin";
     if (userRole === "teacher") return "Teacher Portal";
     return "Student Portal";
   };
 
   return (
-    <div className="flex items-center justify-between px-6 py-5 sticky top-0 z-20 glass">
+    <div className="flex items-center justify-between px-6 py-5 lg:px-8 lg:py-4 sticky top-0 z-20 glass">
       <div className="flex items-center gap-4">
+        {/* Mobile/tablet: avatar on home, back arrow on sub-screens */}
         {!isHome ? (
           <button
             onClick={() => setActiveTab("home")}
@@ -48,17 +64,13 @@ export default function AppHeader() {
         ) : (
           <button
             onClick={() => setActiveTab("profile")}
-            className="w-10 h-10 bg-indigo-100 rounded-2xl flex items-center justify-center active:scale-95 transition-transform shadow-sm"
+            className="w-10 h-10 bg-indigo-100 rounded-2xl flex items-center justify-center active:scale-95 transition-transform shadow-sm lg:hidden"
           >
             {user ? (
               <span className="text-sm font-black text-indigo-700">
                 {user.name
-                  .split(" ")
-                  .filter(Boolean)
-                  .map((n) => n[0])
-                  .join("")
-                  .slice(0, 2)
-                  .toUpperCase()}
+                  .split(" ").filter(Boolean)
+                  .map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
               </span>
             ) : (
               <User className="w-5 h-5 text-indigo-600" />
@@ -73,7 +85,7 @@ export default function AppHeader() {
             {getRoleBadge()}
           </div>
           <h1 className="text-lg font-black text-gray-900 leading-none mt-1">
-            {TITLES[activeTab] || "EduTrack"}
+            {TITLES[activeTab] || "Klasszy"}
           </h1>
         </div>
       </div>
@@ -81,10 +93,10 @@ export default function AppHeader() {
       <div className="flex gap-2">
         <button
           onClick={() => {
-            if (userRole === "parent") setActiveTab("notifications");
+            if (userRole === "parent")                          setActiveTab("notifications");
             if (userRole === "teacher" || userRole === "admin") setActiveTab("circulars");
           }}
-          className="w-10 h-10 bg-gray-50 rounded-2xl flex items-center justify-center relative"
+          className="w-10 h-10 bg-gray-50 rounded-2xl flex items-center justify-center relative hover:bg-gray-100 transition-colors"
         >
           <Bell className="w-5 h-5 text-gray-500" />
           <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-indigo-500 rounded-full border-2 border-white" />

@@ -240,6 +240,7 @@ interface AppContextType {
   user: UserProfile | null;
   school: School | null;
   activeTab: string;
+  studentDetailReturnTab: string;
   students: Student[];
   classes: ClassRoom[];
   announcements: Announcement[];
@@ -262,6 +263,7 @@ interface AppContextType {
   login: (schoolCode: string, email: string, password: string) => Promise<boolean>;
   logout: () => void;
   setActiveTab: (tab: string) => void;
+  setStudentDetailReturnTab: (tab: string) => void;
   setSelectedStudent: (student: Student | null) => void;
   setSelectedTeacher: (teacher: UserProfile | null) => void;
   setSelectedHomework: (homework: Homework | null) => void;
@@ -313,6 +315,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [school, setSchool] = useState<School | null>(null);
   const [activeTab, setActiveTab] = useState("home");
+  const [studentDetailReturnTab, setStudentDetailReturnTab] = useState<string>("home");
   const [loading, setLoading] = useState(true);
   const [circulars, setCirculars] = useState<Circular[]>([]);
   const [selectedCircular, setSelectedCircular] = useState<Circular | null>(null);
@@ -901,13 +904,70 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   return (
     <AppContext.Provider
       value={{
-        isLoggedIn, userRole, user, school, activeTab, students, classes, announcements, homework, homeworkStatus, attendance, diaryEntries, usersList, circulars, skillStats, studentDetails, remarks, remarkReplies, leaveApplications, notifications, selectedStudent, selectedTeacher, selectedHomework, loading,
-        login, logout, setActiveTab, setSelectedStudent, setSelectedTeacher, setSelectedHomework, addStudent, addClass, sendAnnouncement, assignHomework, markAttendance, toggleDiaryEntry, updateTeacherClasses, onboardUser,
-        updateStudent, deleteStudent, updateClass, deleteClass, updateUserProfile, deleteUser,
-        sendCircular, deleteCircular,
-        selectedCircular, setSelectedCircular,
-        updateStudentPersonalDetails, sendRemark, getStudentRemarks, sendRemarkReply, getRemarkReplies, applyLeave, teacherReviewLeave, adminReviewLeave, sendNotification, markNotificationsAsRead,
-        showAlert, showConfirm, modal, hideModal
+        isLoggedIn,
+        userRole,
+        user,
+        school,
+        activeTab,
+        setActiveTab,
+        studentDetailReturnTab,
+        setStudentDetailReturnTab,
+        loading,
+        circulars,
+        selectedCircular,
+        setSelectedCircular,
+        students,
+        classes,
+        announcements,
+        homework,
+        homeworkStatus,
+        selectedHomework,
+        setSelectedHomework,
+        attendance,
+        diaryEntries,
+        usersList,
+        skillStats,
+        studentDetails,
+        remarks,
+        remarkReplies,
+        leaveApplications,
+        notifications,
+        selectedStudent,
+        setSelectedStudent,
+        selectedTeacher,
+        setSelectedTeacher,
+        login,
+        logout,
+        addStudent,
+        addClass,
+        sendAnnouncement,
+        assignHomework,
+        markAttendance,
+        toggleDiaryEntry,
+        updateTeacherClasses,
+        onboardUser,
+        updateStudent,
+        deleteStudent,
+        updateClass,
+        deleteClass,
+        updateUserProfile,
+        deleteUser,
+        sendCircular,
+        deleteCircular,
+        sendRemark,
+        getStudentRemarks,
+        sendRemarkReply,
+        getRemarkReplies,
+        applyLeave,
+        teacherReviewLeave,
+        adminReviewLeave,
+        sendNotification,
+        markNotificationsAsRead,
+        showAlert,
+        showConfirm,
+        modal,
+        hideModal,
+        updateStudentPersonalDetails,
       }}
     >
       {children}

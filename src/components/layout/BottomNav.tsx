@@ -45,7 +45,7 @@ export default function BottomNav() {
   const tabs = getTabs();
 
   return (
-    <div className="absolute bottom-8 left-1/2 -translate-x-1/2 w-[90%] glass-dark rounded-[40px] p-2 flex justify-around items-center shadow-2xl shadow-black/40 z-50">
+    <div className="absolute bottom-8 left-1/2 -translate-x-1/2 w-[90%] glass-dark rounded-[40px] p-2 flex justify-around items-center shadow-2xl shadow-black/40 z-50 lg:hidden">
       {tabs.map(({ id, Icon }) => {
         const isActive = activeTab === id;
         return (

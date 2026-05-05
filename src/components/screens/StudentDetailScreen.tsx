@@ -9,12 +9,15 @@ export default function StudentDetailScreen() {
     selectedStudent, 
     setSelectedStudent, 
     setActiveTab, 
+    studentDetailReturnTab,
+    setStudentDetailReturnTab,
     studentDetails, 
     remarks, 
     sendRemark, 
     getStudentRemarks,
     classes,
     usersList,
+    attendance,
     showAlert,
     showConfirm,
     updateStudentPersonalDetails
@@ -37,6 +40,18 @@ export default function StudentDetailScreen() {
   const studentRemarks = selectedStudent ? getStudentRemarks(selectedStudent.id) : [];
   const studentPersonalDetails = studentDetails.find(d => d.studentId === selectedStudent?.id);
   const parent = usersList.find(u => u.id === selectedStudent?.parentId);
+
+  const attendancePct = React.useMemo(() => {
+    if (!selectedStudent) return 0;
+    const statuses: ("present" | "absent" | "late")[] = [];
+    (attendance || []).forEach((doc) => {
+      const r = doc.records.find((rr) => rr.studentId === selectedStudent.id);
+      if (r) statuses.push(r.status);
+    });
+    const total = statuses.length;
+    const presentLike = statuses.filter((s) => s === "present" || s === "late").length;
+    return total === 0 ? 0 : Math.round((presentLike / total) * 100);
+  }, [attendance, selectedStudent]);
 
   // Initialize form with existing data
   useEffect(() => {
@@ -123,7 +138,9 @@ export default function StudentDetailScreen() {
         <button 
           onClick={() => {
             setSelectedStudent(null);
-            setActiveTab("manage_students");
+            const backTab = studentDetailReturnTab || "home";
+            setActiveTab(backTab);
+            setStudentDetailReturnTab("home");
           }}
           className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center shadow-sm active:scale-90"
         >
@@ -158,6 +175,10 @@ export default function StudentDetailScreen() {
           <div className="bg-gray-50 rounded-2xl p-4">
             <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Password</p>
             <p className="text-sm font-bold text-gray-900">{selectedStudent.password || "password123"}</p>
+          </div>
+          <div className="bg-gray-50 rounded-2xl p-4 col-span-2">
+            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Attendance</p>
+            <p className="text-sm font-bold text-gray-900">{attendancePct}%</p>
           </div>
         </div>
       </div>

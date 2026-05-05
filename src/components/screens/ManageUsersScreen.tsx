@@ -160,7 +160,7 @@ export default function ManageUsersScreen() {
                 </button>
                 <button
                   onClick={() => handleDeleteStudent(s)}
-                  className="w-9 h-9 bg-rose-50 text-rose-400 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-rose-500 hover:text-white shrink-0"
+                  className="w-9 h-9 bg-rose-50 text-rose-400 rounded-xl flex items-center justify-center opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all hover:bg-rose-500 hover:text-white shrink-0"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -201,7 +201,7 @@ export default function ManageUsersScreen() {
                 </button>
                 <button
                   onClick={() => handleDeleteTeacher(t)}
-                  className="w-9 h-9 bg-rose-50 text-rose-400 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-rose-500 hover:text-white shrink-0"
+                  className="w-10 h-10 bg-rose-50 text-rose-500 rounded-xl flex items-center justify-center opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all hover:bg-rose-500 hover:text-white"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>

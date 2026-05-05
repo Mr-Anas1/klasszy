@@ -4,6 +4,11 @@ import React from "react";
 import { useApp } from "@/context/AppContext";
 import AppHeader from "@/components/layout/AppHeader";
 import BottomNav from "@/components/layout/BottomNav";
+import {
+  LayoutDashboard, Users, GraduationCap, BookOpen, School, Megaphone,
+  Activity, Bell, User, Calendar, FileText, BarChart3, ClipboardList,
+  Newspaper, ChevronRight,
+} from "lucide-react";
 
 // Shared screens
 import ProfileScreen from "@/components/screens/ProfileScreen";
@@ -37,6 +42,167 @@ import DiaryHistoryScreen from "@/components/screens/DiaryHistoryScreen";
 import AnalysisScreen from "@/components/screens/AnalysisScreen";
 import RemarksScreen from "@/components/screens/RemarksScreen";
 import HomeworkDetailScreen from "@/components/screens/HomeworkDetailScreen";
+
+// ─── Sidebar nav definitions ───────────────────────────────────────────────
+
+interface NavItem {
+  id: string;
+  Icon: React.ComponentType<{ className?: string }>;
+  label: string;
+}
+
+const ADMIN_NAV: NavItem[] = [
+  { id: "home",                Icon: LayoutDashboard, label: "Dashboard" },
+  { id: "manage_users",        Icon: Users,           label: "Users" },
+  { id: "manage_students",     Icon: GraduationCap,   label: "Students" },
+  { id: "manage_teachers",     Icon: BookOpen,        label: "Teachers" },
+  { id: "manage_classes",      Icon: School,          label: "Classes" },
+  { id: "admin_announcements", Icon: Megaphone,       label: "Announcements" },
+  { id: "admin_activities",    Icon: Activity,        label: "Activities" },
+  { id: "circulars",           Icon: Newspaper,       label: "Circulars" },
+  { id: "profile",             Icon: User,            label: "Profile" },
+];
+
+const TEACHER_NAV: NavItem[] = [
+  { id: "home",               Icon: LayoutDashboard, label: "Dashboard" },
+  { id: "teacher_classes",    Icon: School,          label: "My Classes" },
+  { id: "students",           Icon: Users,           label: "Students" },
+  { id: "teacher_activities", Icon: ClipboardList,   label: "Activities" },
+  { id: "circulars",          Icon: Newspaper,       label: "Circulars" },
+  { id: "profile",            Icon: User,            label: "Profile" },
+];
+
+const PARENT_NAV: NavItem[] = [
+  { id: "home",          Icon: LayoutDashboard, label: "Home" },
+  { id: "attendance",    Icon: Calendar,        label: "Attendance" },
+  { id: "diary",         Icon: FileText,        label: "Diary" },
+  { id: "circulars",     Icon: Newspaper,       label: "Circulars" },
+  { id: "notifications", Icon: Bell,            label: "Notifications" },
+  { id: "profile",       Icon: User,            label: "Profile" },
+];
+
+const STUDENT_NAV: NavItem[] = [
+  { id: "home",       Icon: LayoutDashboard, label: "Home" },
+  { id: "attendance", Icon: Calendar,        label: "Attendance" },
+  { id: "diary",      Icon: FileText,        label: "Diary" },
+  { id: "analysis",   Icon: BarChart3,       label: "Analysis" },
+  { id: "circulars",  Icon: Newspaper,       label: "Circulars" },
+  { id: "profile",    Icon: User,            label: "Profile" },
+];
+
+// Map detail/sub screens back to their parent nav item
+function getEffectiveTab(activeTab: string, userRole: string): string {
+  const maps: Record<string, Record<string, string>> = {
+    admin: {
+      student_detail:  "manage_students",
+      teacher_detail:  "manage_teachers",
+      view_circular:   "circulars",
+      homework_detail: "home",
+      homework_history:"home",
+    },
+    teacher: {
+      student_detail:  "students",
+      view_circular:   "circulars",
+      homework_detail: "teacher_classes",
+      homework_history:"teacher_classes",
+    },
+    parent: {
+      view_circular:   "circulars",
+      diary_history:   "diary",
+      remarks_history: "home",
+      homework_detail: "home",
+      homework_history:"home",
+      student_detail:  "home",
+    },
+    student: {
+      view_circular:   "circulars",
+      diary_history:   "diary",
+      remarks_history: "home",
+      homework_detail: "home",
+    },
+  };
+  return maps[userRole]?.[activeTab] ?? activeTab;
+}
+
+// ─── Desktop Sidebar ────────────────────────────────────────────────────────
+
+function DesktopSidebar() {
+  const { activeTab, setActiveTab, userRole, user } = useApp();
+
+  const navItems =
+    userRole === "admin"   ? ADMIN_NAV   :
+    userRole === "teacher" ? TEACHER_NAV :
+    userRole === "parent"  ? PARENT_NAV  :
+                             STUDENT_NAV;
+
+  const effectiveTab = getEffectiveTab(activeTab, userRole ?? "student");
+
+  const roleLabel =
+    userRole === "admin"   ? "Super Admin"    :
+    userRole === "teacher" ? "Teacher Portal" :
+                             "Student Portal";
+
+  const initials = user?.name
+    .split(" ").filter(Boolean)
+    .map((n) => n[0]).join("").slice(0, 2).toUpperCase() ?? "?";
+
+  return (
+    <aside className="hidden lg:flex flex-col w-64 xl:w-72 border-r border-gray-100 h-full bg-white shrink-0">
+      {/* Logo */}
+      <div className="px-6 py-6 border-b border-gray-50">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200/60">
+            <span className="text-white font-black text-sm">K</span>
+          </div>
+          <div>
+            <p className="font-black text-gray-900 text-sm">Klasszy</p>
+            <p className="text-[9px] font-black uppercase tracking-[2.5px] text-gray-400 mt-0.5">{roleLabel}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto no-scrollbar">
+        {navItems.map(({ id, Icon, label }) => {
+          const isActive = effectiveTab === id;
+          return (
+            <button
+              key={id}
+              onClick={() => setActiveTab(id)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all text-left ${
+                isActive
+                  ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100"
+                  : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+              }`}
+            >
+              <Icon className="w-4 h-4 shrink-0" />
+              <span className="font-bold text-sm">{label}</span>
+            </button>
+          );
+        })}
+      </nav>
+
+      {/* User profile */}
+      <div className="p-4 border-t border-gray-100">
+        <button
+          onClick={() => setActiveTab("profile")}
+          className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-gray-50 transition-all group"
+        >
+          <div className="w-9 h-9 bg-indigo-100 rounded-xl flex items-center justify-center shrink-0">
+            <span className="text-sm font-black text-indigo-700">{initials}</span>
+          </div>
+          <div className="flex-1 text-left min-w-0">
+            <p className="font-bold text-gray-900 text-sm truncate">{user?.name}</p>
+            <p className="text-[10px] text-gray-400 font-medium truncate">{user?.email}</p>
+          </div>
+          <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-gray-500 transition-colors shrink-0" />
+        </button>
+      </div>
+    </aside>
+  );
+}
+
+// ─── App Shell ──────────────────────────────────────────────────────────────
 
 export default function AppShell() {
   const { activeTab, userRole } = useApp();
@@ -114,14 +280,22 @@ export default function AppShell() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-white">
-      <AppHeader />
-      <main
-        key={`${userRole}-${activeTab}`}
-        className="flex-1 overflow-y-auto overscroll-none no-scrollbar animate-fade-slide-up bg-[#f5f5f7]"
-      >
-        {getScreen()}
-      </main>
+    <div className="flex flex-col h-full bg-white lg:flex-row">
+      {/* Desktop sidebar — hidden on mobile/tablet */}
+      <DesktopSidebar />
+
+      {/* Main content column */}
+      <div className="flex flex-col flex-1 min-h-0">
+        <AppHeader />
+        <main
+          key={`${userRole}-${activeTab}`}
+          className="flex-1 overflow-y-auto overscroll-none no-scrollbar animate-fade-slide-up bg-[#f5f5f7]"
+        >
+          {getScreen()}
+        </main>
+      </div>
+
+      {/* Bottom nav — absolute on mobile, hidden on desktop via lg:hidden */}
       <BottomNav />
     </div>
   );

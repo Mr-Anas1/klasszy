@@ -136,7 +136,7 @@ export default function AdminAnnouncementsScreen() {
                 </div>
                 <button
                   onClick={e => { e.stopPropagation(); deleteCircular(c.id); }}
-                  className="w-8 h-8 bg-rose-50 text-rose-400 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-rose-500 hover:text-white shrink-0"
+                  className="w-8 h-8 bg-rose-50 text-rose-400 rounded-xl flex items-center justify-center opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all hover:bg-rose-500 hover:text-white shrink-0"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
