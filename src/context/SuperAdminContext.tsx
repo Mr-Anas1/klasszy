@@ -25,6 +25,7 @@ import {
 import { initializeApp, getApps } from "firebase/app";
 import { db, auth } from "@/lib/firebase";
 import { School, UserProfile, Student, ClassRoom } from "@/context/AppContext";
+import { getDefaultFeatures } from "@/lib/feature-registry";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -93,6 +94,7 @@ interface SuperAdminContextType {
   createSchool: (data: CreateSchoolData) => Promise<void>;
   updateSchool: (id: string, data: { name: string; themeColor: string }) => Promise<void>;
   deleteSchool: (id: string) => Promise<void>;
+  updateSchoolFeatures: (schoolId: string, features: Record<string, boolean>) => Promise<void>;
   createSchoolAdmin: (schoolId: string, data: { name: string; email: string; phone: string; password: string }) => Promise<void>;
   alert: SAAlert | null;
   showAlert: (title: string, message: string, type?: "success" | "error") => void;
@@ -196,6 +198,7 @@ export function SuperAdminProvider({ children }: { children: React.ReactNode }) 
       name: data.name,
       code: data.code.toUpperCase(),
       themeColor: data.themeColor,
+      features: getDefaultFeatures(),
       createdAt: Timestamp.now(),
     });
 
@@ -224,6 +227,14 @@ export function SuperAdminProvider({ children }: { children: React.ReactNode }) 
     if (selectedSchool?.id === id) {
       setSelectedSchool(null);
       setSchoolDetail(null);
+    }
+  };
+
+  const updateSchoolFeatures = async (schoolId: string, features: Record<string, boolean>) => {
+    await updateDoc(doc(db, "schools", schoolId), { features });
+    // Update local selected school state
+    if (selectedSchool?.id === schoolId) {
+      setSelectedSchool((prev) => (prev ? { ...prev, features } : null));
     }
   };
 
@@ -299,6 +310,7 @@ export function SuperAdminProvider({ children }: { children: React.ReactNode }) 
         createSchool,
         updateSchool,
         deleteSchool,
+        updateSchoolFeatures,
         createSchoolAdmin,
         alert,
         showAlert,

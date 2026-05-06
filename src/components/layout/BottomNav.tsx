@@ -1,5 +1,4 @@
 "use client";
-// Force refresh
 
 import React from "react";
 import { 
@@ -13,9 +12,10 @@ import {
   Bell
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
+import { isNavItemEnabled } from "@/lib/feature-registry";
 
 export default function BottomNav() {
-  const { activeTab, setActiveTab, userRole } = useApp();
+  const { activeTab, setActiveTab, userRole, school } = useApp();
 
   const getTabs = () => {
     if (userRole === "admin") {
@@ -32,7 +32,7 @@ export default function BottomNav() {
         { id: "profile", Icon: User },
       ];
     }
-    // Student default
+    // Student / Parent default
     return [
       { id: "home", Icon: BookOpen },
       { id: "circulars", Icon: Bell },
@@ -42,7 +42,7 @@ export default function BottomNav() {
     ];
   };
 
-  const tabs = getTabs();
+  const tabs = getTabs().filter(t => isNavItemEnabled(t.id, school?.features));
 
   return (
     <div className="absolute bottom-8 left-1/2 -translate-x-1/2 w-[90%] glass-dark rounded-[40px] p-2 flex justify-around items-center shadow-2xl shadow-black/40 z-50 md:hidden">

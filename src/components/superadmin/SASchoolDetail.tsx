@@ -13,12 +13,14 @@ import {
   Loader2,
   Building2,
   Plus,
+  Sliders,
 } from "lucide-react";
 import { useSuperAdmin } from "@/context/SuperAdminContext";
 import { School, UserProfile, Student, ClassRoom } from "@/context/AppContext";
 import AdminCreationForm from "./AdminCreationForm";
+import SAFeatureManager from "./SAFeatureManager";
 
-type DetailTab = "users" | "students" | "classes";
+type DetailTab = "users" | "students" | "classes" | "features";
 
 interface Props {
   school: School;
@@ -71,6 +73,11 @@ export default function SASchoolDetail({ school, onBack }: Props) {
       label: "Classes",
       icon: LayoutGrid,
       count: detail ? detail.classes.length : undefined,
+    },
+    {
+      id: "features",
+      label: "Features",
+      icon: Sliders,
     },
   ];
 
@@ -176,6 +183,7 @@ export default function SASchoolDetail({ school, onBack }: Props) {
             {activeTab === "classes" && (
               <ClassesTab classes={detail?.classes ?? []} students={detail?.students ?? []} />
             )}
+            {activeTab === "features" && <SAFeatureManager school={school} />}
           </>
         )}
       </div>

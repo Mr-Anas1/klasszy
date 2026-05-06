@@ -9,6 +9,7 @@ import {
   Activity, Bell, User, Calendar, FileText, BarChart3, ClipboardList,
   Newspaper, ChevronRight, ShieldCheck,
 } from "lucide-react";
+import { isNavItemEnabled } from "@/lib/feature-registry";
 
 // Shared screens
 import ProfileScreen from "@/components/screens/ProfileScreen";
@@ -129,7 +130,7 @@ function getEffectiveTab(activeTab: string, userRole: string): string {
 // ─── Desktop Sidebar ────────────────────────────────────────────────────────
 
 function DesktopSidebar() {
-  const { activeTab, setActiveTab, userRole, user } = useApp();
+  const { activeTab, setActiveTab, userRole, user, school } = useApp();
 
   const navItems =
     userRole === "admin"   ? ADMIN_NAV   :
@@ -137,6 +138,7 @@ function DesktopSidebar() {
     userRole === "parent"  ? PARENT_NAV  :
                              STUDENT_NAV;
 
+  const filtered = navItems.filter(n => isNavItemEnabled(n.id, school?.features));
   const effectiveTab = getEffectiveTab(activeTab, userRole ?? "student");
 
   const roleLabel =
@@ -165,7 +167,7 @@ function DesktopSidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto no-scrollbar">
-        {navItems.map(({ id, Icon, label }) => {
+        {filtered.map(({ id, Icon, label }) => {
           const isActive = effectiveTab === id;
           return (
             <button

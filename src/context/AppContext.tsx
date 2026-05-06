@@ -54,6 +54,7 @@ export interface School {
   code: string;
   logoUrl?: string;
   themeColor?: string;
+  features?: Record<string, boolean>;
   createdAt: Timestamp;
 }
 
@@ -261,6 +262,7 @@ interface AppContextType {
   selectedTeacher: UserProfile | null;
   selectedHomework: Homework | null;
   loading: boolean;
+  isFeatureEnabled: (featureId: string) => boolean;
   login: (schoolCode: string, email: string, password: string) => Promise<boolean>;
   logout: () => void;
   setActiveTab: (tab: string) => void;
@@ -517,6 +519,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
        setDiaryEntries(homework.map(h => ({ ...h, status: homeworkStatus[h.id] || "Pending" } as DiaryEntry)));
     }
   }, [homework, homeworkStatus, user, userRole, students]);
+
+  const isFeatureEnabled = (featureId: string): boolean => {
+    if (!school?.features) return true; // backward-compat: no config = all on
+    if (featureId in school.features) return school.features[featureId];
+    return true;
+  };
 
   const login = async (schoolCode: string, email: string, password: string): Promise<boolean> => {
     if (!schoolCode || !email) return false;
@@ -909,6 +917,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         userRole,
         user,
         school,
+        isFeatureEnabled,
         activeTab,
         setActiveTab,
         studentDetailReturnTab,

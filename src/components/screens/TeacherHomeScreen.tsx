@@ -3,9 +3,10 @@
 import React from "react";
 import { BookOpen, Bell, Activity } from "lucide-react";
 import { useApp, UserProfile } from "@/context/AppContext";
+import { isNavItemEnabled } from "@/lib/feature-registry";
 
 export default function TeacherHomeScreen() {
-  const { user, classes, leaveApplications, circulars, setActiveTab } = useApp();
+  const { user, classes, circulars, leaveApplications, setActiveTab, school } = useApp();
   const teacher = user as UserProfile;
 
   const myClasses = classes.filter(c => teacher.classIds?.includes(c.id));
@@ -80,7 +81,9 @@ export default function TeacherHomeScreen() {
 
       {/* Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {cards.map(card => (
+        {cards
+          .filter((c) => isNavItemEnabled(c.id, school?.features))
+          .map(card => (
           <button
             key={card.id}
             onClick={() => setActiveTab(card.id)}

@@ -3,12 +3,14 @@
 import React from "react";
 import { Calendar, FileText, Bell, MessageSquare, Send, BellRing } from "lucide-react";
 import { useApp } from "@/context/AppContext";
+import { isNavItemEnabled } from "@/lib/feature-registry";
 
 export default function HomeScreen() {
   const {
     user, circulars, homework, attendance,
     setActiveTab, students, remarks, notifications,
     applyLeave, showAlert, leaveApplications, markNotificationsAsRead,
+    school,
   } = useApp();
 
   const [showLeaveForm, setShowLeaveForm] = React.useState(false);
@@ -175,7 +177,9 @@ export default function HomeScreen() {
 
       {/* Card Grid - 6 cards layout */}
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-fr">
-        {cards.map((card, index) => (
+        {cards
+          .filter((c) => isNavItemEnabled(c.id, school?.features))
+          .map((card) => (
           <button
             key={card.id}
             onClick={() => {

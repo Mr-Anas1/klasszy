@@ -3,9 +3,10 @@
 import React from "react";
 import { Users, Megaphone, Activity, School, ShieldCheck } from "lucide-react";
 import { useApp } from "@/context/AppContext";
+import { isNavItemEnabled } from "@/lib/feature-registry";
 
 export default function AdminDashboardScreen() {
-  const { user, students, classes, usersList, leaveApplications, circulars, setActiveTab } = useApp();
+  const { user, students, classes, usersList, leaveApplications, circulars, setActiveTab, school } = useApp();
 
   const teachers = usersList.filter(u => u.role === "teacher");
   const pendingLeaves = leaveApplications.filter(l => l.status === "pending_admin").length;
@@ -86,7 +87,7 @@ export default function AdminDashboardScreen() {
 
       {/* Main Cards Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {cards.map((card) => (
+        {cards.filter(c => isNavItemEnabled(c.id, school?.features)).map((card) => (
           <button
             key={card.id}
             onClick={() => setActiveTab(card.id)}
