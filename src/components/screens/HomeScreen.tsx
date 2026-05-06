@@ -174,7 +174,7 @@ export default function HomeScreen() {
       <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4">Overview</p>
 
       {/* Card Grid - 6 cards layout */}
-      <div className="grid grid-cols-2 gap-4 auto-rows-fr">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-fr">
         {cards.map((card, index) => (
           <button
             key={card.id}
@@ -189,11 +189,11 @@ export default function HomeScreen() {
                 setActiveTab(card.id);
               }
             }}
-            className={`${card.bg} p-6 rounded-[32px] aspect-square flex flex-col justify-between text-white relative overflow-hidden group active:scale-95 transition-transform text-left`}
+            className={`${card.bg} p-6 lg:p-4 rounded-[32px] lg:rounded-xl aspect-square lg:aspect-auto lg:h-44 flex flex-col justify-between text-white relative overflow-hidden group active:scale-95 transition-transform text-left`}
           >
             {/* Icon */}
             <div className="relative">
-              <card.Icon className="w-7 h-7 text-white/60" />
+              <card.Icon className="w-7 h-7 lg:w-5 lg:h-5 text-white/60" />
               {/* Red indicator dot for unread notifications */}
               {card.id === "notifications" && (card as any).hasUnread && (
                 <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></div>

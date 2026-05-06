@@ -38,7 +38,8 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-const secondaryApp = getApps().length > 1 ? getApp("onboarder") : initializeApp(firebaseConfig, "onboarder");
+const secondaryApp =
+  getApps().find((a) => a.name === "onboarder") ?? initializeApp(firebaseConfig, "onboarder");
 const onboardAuth = getAuth(secondaryApp);
 
 export type UserRole = "admin" | "teacher" | "parent";

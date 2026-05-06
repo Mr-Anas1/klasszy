@@ -7,7 +7,7 @@ import BottomNav from "@/components/layout/BottomNav";
 import {
   LayoutDashboard, Users, GraduationCap, BookOpen, School, Megaphone,
   Activity, Bell, User, Calendar, FileText, BarChart3, ClipboardList,
-  Newspaper, ChevronRight,
+  Newspaper, ChevronRight, ShieldCheck,
 } from "lucide-react";
 
 // Shared screens
@@ -25,6 +25,7 @@ import ManageUsersScreen from "@/components/screens/ManageUsersScreen";
 import ManageStudentsScreen from "@/components/screens/ManageStudentsScreen";
 import ManageTeachersScreen from "@/components/screens/ManageTeachersScreen";
 import ManageClassesScreen from "@/components/screens/ManageClassesScreen";
+import ManageAdminsScreen from "@/components/screens/ManageAdminsScreen";
 import AdminAnnouncementsScreen from "@/components/screens/AdminAnnouncementsScreen";
 import AdminActivitiesScreen from "@/components/screens/AdminActivitiesScreen";
 
@@ -54,6 +55,7 @@ interface NavItem {
 const ADMIN_NAV: NavItem[] = [
   { id: "home",                Icon: LayoutDashboard, label: "Dashboard" },
   { id: "manage_users",        Icon: Users,           label: "Users" },
+  { id: "manage_admins",       Icon: ShieldCheck,     label: "Admins" },
   { id: "manage_students",     Icon: GraduationCap,   label: "Students" },
   { id: "manage_teachers",     Icon: BookOpen,        label: "Teachers" },
   { id: "manage_classes",      Icon: School,          label: "Classes" },
@@ -147,7 +149,7 @@ function DesktopSidebar() {
     .map((n) => n[0]).join("").slice(0, 2).toUpperCase() ?? "?";
 
   return (
-    <aside className="hidden lg:flex flex-col w-64 xl:w-72 border-r border-gray-100 h-full bg-white shrink-0">
+    <aside className="hidden md:flex flex-col w-64 xl:w-72 border-r border-gray-100 h-full bg-white shrink-0">
       {/* Logo */}
       <div className="px-6 py-6 border-b border-gray-50">
         <div className="flex items-center gap-3">
@@ -212,6 +214,7 @@ export default function AppShell() {
     if (userRole === "admin") {
       switch (activeTab) {
         case "manage_users":         return <ManageUsersScreen />;
+        case "manage_admins":        return <ManageAdminsScreen />;
         case "manage_students":      return <ManageStudentsScreen />;
         case "manage_teachers":      return <ManageTeachersScreen />;
         case "manage_classes":       return <ManageClassesScreen />;
@@ -280,7 +283,7 @@ export default function AppShell() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-white lg:flex-row">
+    <div className="flex flex-col h-full bg-white md:flex-row">
       {/* Desktop sidebar — hidden on mobile/tablet */}
       <DesktopSidebar />
 

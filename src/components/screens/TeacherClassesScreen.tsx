@@ -593,10 +593,10 @@ export default function TeacherClassesScreen() {
             <div className="grid grid-cols-2 gap-4 mb-8">
               <button
                 onClick={openAttendance}
-                className="bg-emerald-600 text-white p-5 rounded-[28px] flex flex-col gap-3 active:scale-95 transition-transform shadow-lg shadow-emerald-200 text-left"
+                className="bg-emerald-600 text-white p-5 lg:p-4 rounded-[28px] lg:rounded-xl flex flex-col gap-3 lg:gap-2 active:scale-95 transition-transform shadow-lg shadow-emerald-200 text-left"
               >
-                <div className="bg-white/20 w-10 h-10 rounded-xl flex items-center justify-center">
-                  <Calendar className="w-5 h-5" />
+                <div className="bg-white/20 w-10 h-10 lg:w-8 lg:h-8 rounded-xl flex items-center justify-center">
+                  <Calendar className="w-5 h-5 lg:w-4 lg:h-4" />
                 </div>
                 <div>
                   <p className="text-sm font-black">Mark Attendance</p>
@@ -605,10 +605,10 @@ export default function TeacherClassesScreen() {
               </button>
               <button
                 onClick={() => setAction("homework")}
-                className="bg-indigo-600 text-white p-5 rounded-[28px] flex flex-col gap-3 active:scale-95 transition-transform shadow-lg shadow-indigo-200 text-left"
+                className="bg-indigo-600 text-white p-5 lg:p-4 rounded-[28px] lg:rounded-xl flex flex-col gap-3 lg:gap-2 active:scale-95 transition-transform shadow-lg shadow-indigo-200 text-left"
               >
-                <div className="bg-white/20 w-10 h-10 rounded-xl flex items-center justify-center">
-                  <BookOpen className="w-5 h-5" />
+                <div className="bg-white/20 w-10 h-10 lg:w-8 lg:h-8 rounded-xl flex items-center justify-center">
+                  <BookOpen className="w-5 h-5 lg:w-4 lg:h-4" />
                 </div>
                 <div>
                   <p className="text-sm font-black">Assign Homework</p>
@@ -620,13 +620,13 @@ export default function TeacherClassesScreen() {
             <div className="mb-8">
               <button
                 onClick={() => setViewMode("attendance_history")}
-                className="w-full bg-white p-5 rounded-[28px] border border-gray-100 shadow-sm flex items-center justify-between hover:border-indigo-100 transition-all"
+                className="w-full bg-white p-5 lg:p-4 rounded-[28px] lg:rounded-xl border border-gray-100 shadow-sm flex items-center justify-between hover:border-indigo-100 transition-all"
               >
                 <div>
                   <p className="text-sm font-black text-gray-900">Attendance History</p>
                   <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">Calendar view</p>
                 </div>
-                <Calendar className="w-5 h-5 text-indigo-400" />
+                <Calendar className="w-5 h-5 lg:w-4 lg:h-4 text-indigo-400" />
               </button>
             </div>
 
@@ -634,10 +634,10 @@ export default function TeacherClassesScreen() {
             <div className="mb-8">
               <button
                 onClick={() => setAction("notification")}
-                className="w-full bg-amber-500 text-white p-5 rounded-[28px] flex flex-col gap-3 active:scale-95 transition-transform shadow-lg shadow-amber-200 text-left"
+                className="w-full bg-amber-500 text-white p-5 lg:p-4 rounded-[28px] lg:rounded-xl flex flex-col gap-3 lg:gap-2 active:scale-95 transition-transform shadow-lg shadow-amber-200 text-left"
               >
-                <div className="bg-white/20 w-10 h-10 rounded-xl flex items-center justify-center">
-                  <Users className="w-5 h-5" />
+                <div className="bg-white/20 w-10 h-10 lg:w-8 lg:h-8 rounded-xl flex items-center justify-center">
+                  <Users className="w-5 h-5 lg:w-4 lg:h-4" />
                 </div>
                 <div>
                   <p className="text-sm font-black">Send Notification</p>

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Users, Megaphone, Activity, School } from "lucide-react";
+import { Users, Megaphone, Activity, School, ShieldCheck } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 
 export default function AdminDashboardScreen() {
@@ -10,6 +10,7 @@ export default function AdminDashboardScreen() {
   const teachers = usersList.filter(u => u.role === "teacher");
   const pendingLeaves = leaveApplications.filter(l => l.status === "pending_admin").length;
 
+  const admins = usersList.filter(u => u.role === "admin");
   const cards = [
     {
       id: "manage_users",
@@ -18,6 +19,14 @@ export default function AdminDashboardScreen() {
       subtitle: `${students.length} students · ${teachers.length} teachers`,
       bg: "bg-indigo-600",
       shadow: "shadow-indigo-200",
+    },
+    {
+      id: "manage_admins",
+      Icon: ShieldCheck,
+      title: "Manage Admins",
+      subtitle: `${admins.length} admin${admins.length !== 1 ? "s" : ""} configured`,
+      bg: "bg-purple-600",
+      shadow: "shadow-purple-200",
     },
     {
       id: "admin_announcements",
@@ -76,17 +85,17 @@ export default function AdminDashboardScreen() {
       <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4">Quick Access</p>
 
       {/* Main Cards Grid */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {cards.map((card) => (
           <button
             key={card.id}
             onClick={() => setActiveTab(card.id)}
-            className={`${card.bg} p-6 rounded-[32px] aspect-square flex flex-col justify-between text-white relative overflow-hidden group active:scale-95 transition-transform text-left shadow-lg ${card.shadow}`}
+            className={`${card.bg} p-6 lg:p-4 rounded-[32px] lg:rounded-xl aspect-square lg:aspect-auto lg:h-44 flex flex-col justify-between text-white relative overflow-hidden group active:scale-95 transition-transform text-left shadow-lg ${card.shadow}`}
           >
             {/* Icon block */}
             <div className="relative w-fit">
-              <div className="bg-white/20 w-12 h-12 rounded-2xl flex items-center justify-center">
-                <card.Icon className="w-6 h-6 text-white" />
+              <div className="bg-white/20 w-12 h-12 lg:w-10 lg:h-10 rounded-2xl flex items-center justify-center">
+                <card.Icon className="w-6 h-6 lg:w-5 lg:h-5 text-white" />
               </div>
               {card.badge != null && (
                 <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-white rounded-full flex items-center justify-center shadow">

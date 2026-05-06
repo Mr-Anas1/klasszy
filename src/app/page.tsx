@@ -31,8 +31,8 @@ function RootContent() {
 export default function Home() {
   return (
     <AppProvider>
-      <div className="h-[100dvh] bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-100 via-slate-50 to-violet-100 flex items-center justify-center p-0 sm:p-6 lg:p-0 lg:bg-[#f5f5f7]">
-        <div className="h-full w-full max-w-md mx-auto shadow-[0_32px_64px_-12px_rgba(0,0,0,0.15)] flex flex-col bg-white relative overflow-hidden sm:rounded-[3rem] border-8 border-white lg:max-w-none lg:rounded-none lg:border-0 lg:shadow-none lg:overflow-visible">
+      <div className="h-[100dvh] bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-100 via-slate-50 to-violet-100 lg:bg-[#f5f5f7]">
+        <div className="h-full w-full flex flex-col bg-white relative overflow-hidden lg:bg-transparent lg:overflow-visible">
           <RootContent />
         </div>
       </div>
