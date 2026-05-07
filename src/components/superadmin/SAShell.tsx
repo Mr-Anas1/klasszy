@@ -4,6 +4,7 @@ import { useState } from "react";
 import {
   LayoutDashboard,
   Building2,
+  Plus,
   LogOut,
   ShieldCheck,
   Menu,
@@ -15,11 +16,12 @@ import SAOverview from "./SAOverview";
 import SASchools from "./SASchools";
 import SASchoolDetail from "./SASchoolDetail";
 
-type Tab = "overview" | "schools" | "school_detail";
+type Tab = "overview" | "schools" | "add_school" | "school_detail";
 
 const NAV = [
   { id: "overview" as Tab, label: "Overview", icon: LayoutDashboard },
   { id: "schools" as Tab, label: "Schools", icon: Building2 },
+  { id: "add_school" as Tab, label: "Add School", icon: Plus },
 ];
 
 export default function SAShell() {
@@ -46,6 +48,7 @@ export default function SAShell() {
   const getTitle = () => {
     if (tab === "overview") return "Overview";
     if (tab === "schools") return "Schools";
+    if (tab === "add_school") return "Add New School";
     if (tab === "school_detail") return selectedSchool?.name ?? "School Detail";
     return "";
   };
@@ -73,28 +76,28 @@ export default function SAShell() {
       {/* Sidebar overlay (mobile) */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/40 z-20 lg:hidden"
+          className="fixed inset-0 bg-black/50 z-20 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
       {/* Sidebar */}
       <aside
-        className={`fixed lg:static inset-y-0 left-0 z-30 w-64 bg-slate-900 flex flex-col transition-transform duration-200 ${
+        className={`fixed lg:static inset-y-0 left-0 z-30 w-72 bg-slate-900 flex flex-col transition-transform duration-300 ease-in-out ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >
         {/* Logo */}
-        <div className="h-16 flex items-center gap-3 px-5 border-b border-white/10">
-          <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shrink-0">
-            <ShieldCheck className="w-4 h-4 text-white" />
+        <div className="h-20 flex items-center gap-4 px-6 border-b border-white/10">
+          <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl flex items-center justify-center shrink-0 shadow-lg">
+            <ShieldCheck className="w-5 h-5 text-white" />
           </div>
-          <div>
-            <p className="text-white font-bold text-sm leading-tight">Klasszy</p>
-            <p className="text-slate-400 text-[10px] uppercase tracking-widest">Super Admin</p>
+          <div className="flex-1">
+            <h1 className="text-white font-bold text-lg leading-tight">Klasszy</h1>
+            <p className="text-slate-400 text-xs uppercase tracking-wider font-medium">Super Admin Portal</p>
           </div>
           <button
-            className="ml-auto text-slate-400 hover:text-white lg:hidden"
+            className="ml-2 text-slate-400 hover:text-white transition-colors lg:hidden"
             onClick={() => setSidebarOpen(false)}
           >
             <X className="w-5 h-5" />
@@ -102,40 +105,46 @@ export default function SAShell() {
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
-          {NAV.map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              onClick={() => handleTabChange(id)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${
-                tab === id || (tab === "school_detail" && id === "schools")
-                  ? "bg-indigo-600 text-white"
-                  : "text-slate-400 hover:bg-white/5 hover:text-white"
-              }`}
-            >
-              <Icon className="w-4.5 h-4.5 shrink-0" />
-              {label}
-            </button>
-          ))}
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+          <div className="mb-4">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-2">Main</p>
+            {NAV.map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                onClick={() => handleTabChange(id)}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                  tab === id || (tab === "school_detail" && id === "schools")
+                    ? "bg-indigo-600 text-white shadow-lg"
+                    : "text-slate-400 hover:bg-white/5 hover:text-white"
+                }`}
+              >
+                <Icon className="w-5 h-5 shrink-0" />
+                <span className="font-medium">{label}</span>
+                {tab === id && (
+                  <div className="ml-auto w-2 h-2 bg-white rounded-full" />
+                )}
+              </button>
+            ))}
+          </div>
         </nav>
 
         {/* User + logout */}
-        <div className="p-3 border-t border-white/10">
-          <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/5 mb-1">
-            <div className="w-7 h-7 bg-indigo-500 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0">
+        <div className="p-4 border-t border-white/10">
+          <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/5 mb-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0 shadow">
               {superAdmin?.name?.[0]?.toUpperCase() ?? "S"}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-white text-sm font-medium truncate">{superAdmin?.name}</p>
-              <p className="text-slate-400 text-[11px] truncate">{superAdmin?.email}</p>
+              <p className="text-white text-sm font-semibold truncate">{superAdmin?.name}</p>
+              <p className="text-slate-400 text-xs truncate">{superAdmin?.email}</p>
             </div>
           </div>
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:bg-red-500/10 hover:text-red-400 transition"
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400 hover:bg-red-500/10 hover:text-red-400 transition-all duration-200"
           >
             <LogOut className="w-4 h-4 shrink-0" />
-            Sign out
+            <span>Sign out</span>
           </button>
         </div>
       </aside>
@@ -143,47 +152,62 @@ export default function SAShell() {
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top bar */}
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center gap-4 px-4 lg:px-6 shrink-0">
+        <header className="h-16 lg:h-20 bg-white border-b border-slate-200 flex items-center gap-4 px-4 lg:px-6 shrink-0">
           <button
-            className="lg:hidden text-slate-500 hover:text-slate-700 transition"
+            className="lg:hidden text-slate-500 hover:text-slate-700 transition-colors p-2 rounded-lg hover:bg-slate-100"
             onClick={() => setSidebarOpen(true)}
           >
             <Menu className="w-5 h-5" />
           </button>
           <div className="flex-1 min-w-0">
             {getBreadcrumb() ?? (
-              <h1 className="text-slate-800 font-semibold text-lg">{getTitle()}</h1>
+              <div>
+                <h1 className="text-slate-800 font-bold text-xl lg:text-2xl">{getTitle()}</h1>
+                <p className="text-slate-500 text-sm mt-1">
+                  {tab === "overview" && "Platform-wide overview and statistics"}
+                  {tab === "schools" && "Manage all registered schools"}
+                  {tab === "add_school" && "Create a new school and set up its initial admin"}
+                  {tab === "school_detail" && `Manage ${selectedSchool?.name}`}
+                </p>
+              </div>
             )}
           </div>
+          {/* Quick actions could go here */}
         </header>
 
         {/* Content */}
-        <main className="flex-1 overflow-auto p-4 lg:p-6">
-          {tab === "overview" && <SAOverview onViewSchool={handleViewSchool} />}
-          {tab === "schools" && <SASchools onViewSchool={handleViewSchool} />}
-          {tab === "school_detail" && selectedSchool && (
-            <SASchoolDetail
-              school={selectedSchool}
-              onBack={() => handleTabChange("schools")}
-            />
-          )}
+        <main className="flex-1 overflow-auto bg-slate-50/50">
+          <div className="p-4 lg:p-6 max-w-7xl mx-auto">
+            {tab === "overview" && <SAOverview onViewSchool={handleViewSchool} />}
+            {tab === "schools" && <SASchools onViewSchool={handleViewSchool} />}
+            {tab === "add_school" && <SASchools onViewSchool={handleViewSchool} showCreateModal={true} />}
+            {tab === "school_detail" && selectedSchool && (
+              <SASchoolDetail
+                school={selectedSchool}
+                onBack={() => handleTabChange("schools")}
+              />
+            )}
+          </div>
         </main>
       </div>
 
       {/* Alert toast */}
       {alert && (
         <div
-          className={`fixed bottom-6 right-6 z-50 flex items-start gap-3 px-5 py-4 rounded-2xl shadow-2xl text-sm font-medium max-w-sm animate-in slide-in-from-bottom-4 ${
+          className={`fixed bottom-6 right-6 z-50 flex items-start gap-4 px-6 py-4 rounded-2xl shadow-xl text-sm font-medium max-w-md animate-in slide-in-from-bottom-4 ${
             alert.type === "success"
-              ? "bg-emerald-600 text-white"
-              : "bg-red-600 text-white"
+              ? "bg-emerald-600 text-white border border-emerald-500"
+              : "bg-red-600 text-white border border-red-500"
           }`}
         >
           <div className="flex-1">
-            <p className="font-semibold">{alert.title}</p>
-            <p className="font-normal opacity-90 mt-0.5">{alert.message}</p>
+            <p className="font-semibold text-base">{alert.title}</p>
+            <p className="font-normal opacity-90 mt-1 text-sm">{alert.message}</p>
           </div>
-          <button onClick={hideAlert} className="opacity-70 hover:opacity-100 transition mt-0.5">
+          <button 
+            onClick={hideAlert} 
+            className="opacity-70 hover:opacity-100 transition-opacity p-1 rounded-lg hover:bg-white/10"
+          >
             <X className="w-4 h-4" />
           </button>
         </div>

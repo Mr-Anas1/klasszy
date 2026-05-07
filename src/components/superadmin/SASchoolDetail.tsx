@@ -14,6 +14,8 @@ import {
   Building2,
   Plus,
   Sliders,
+  Settings,
+  Info,
 } from "lucide-react";
 import { useSuperAdmin } from "@/context/SuperAdminContext";
 import { School, UserProfile, Student, ClassRoom } from "@/context/AppContext";
@@ -82,97 +84,111 @@ export default function SASchoolDetail({ school, onBack }: Props) {
   ];
 
   return (
-    <div className="space-y-5 max-w-5xl">
-      {/* Header card */}
-      <div className="bg-white rounded-2xl shadow-sm ring-1 ring-slate-100 p-5">
-        <div className="flex items-start gap-4">
-          <div
-            className="w-14 h-14 rounded-2xl flex items-center justify-center text-white text-xl font-bold shrink-0"
-            style={{ backgroundColor: school.themeColor ?? "#4F46E5" }}
-          >
-            {school.name[0]}
-          </div>
-          <div className="flex-1 min-w-0">
-            <h2 className="text-xl font-bold text-slate-800">{school.name}</h2>
-            <div className="flex items-center gap-3 mt-1 flex-wrap">
-              <span className="font-mono text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md">
-                {school.code}
-              </span>
-              <span className="text-slate-400 text-xs flex items-center gap-1">
-                <Building2 className="w-3 h-3" /> ID: {school.id}
-              </span>
+    <div className="space-y-8 max-w-7xl">
+      {/* Header */}
+      <div className="bg-white rounded-2xl shadow-sm ring-1 ring-slate-100 overflow-hidden">
+        <div className="p-6 lg:p-8">
+          <div className="flex items-start gap-6">
+            <div
+              className="w-16 h-16 rounded-2xl flex items-center justify-center text-white text-xl font-bold shrink-0 shadow-lg"
+              style={{ backgroundColor: school.themeColor ?? "#4F46E5" }}
+            >
+              {school.name[0]}
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowAdminForm(true)}
-              className="px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 transition flex items-center gap-1.5"
-            >
-              <Plus className="w-4 h-4" />
-              Add Admin
-            </button>
-            <button
-              onClick={load}
-              disabled={loading}
-              className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition"
-              title="Refresh"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-            </button>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h1 className="text-2xl lg:text-3xl font-bold text-slate-900 mb-2">{school.name}</h1>
+                  <div className="flex items-center gap-4 flex-wrap">
+                    <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-semibold bg-slate-100 text-slate-700">
+                      <Building2 className="w-4 h-4 mr-2" />
+                      {school.code}
+                    </span>
+                    <span className="text-slate-500 text-sm flex items-center gap-1">
+                      ID: {school.id}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setShowAdminForm(true)}
+                    className="px-4 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 transition flex items-center gap-2 shadow-lg shadow-indigo-500/25"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Admin
+                  </button>
+                  <button
+                    onClick={load}
+                    disabled={loading}
+                    className="p-2.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition"
+                    title="Refresh"
+                  >
+                    <RefreshCw className={`w-5 h-5 ${loading ? "animate-spin" : ""}`} />
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Quick stats */}
         {stats && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5 pt-5 border-t border-slate-100">
-            {[
-              { label: "Students", value: stats.studentCount, color: "text-emerald-600" },
-              { label: "Teachers", value: stats.teacherCount, color: "text-violet-600" },
-              { label: "Parents", value: stats.parentCount, color: "text-amber-600" },
-              { label: "Classes", value: stats.classCount, color: "text-indigo-600" },
-            ].map(({ label, value, color }) => (
-              <div key={label} className="text-center">
-                <p className={`text-2xl font-bold ${color}`}>{value}</p>
-                <p className="text-slate-400 text-xs mt-0.5">{label}</p>
-              </div>
-            ))}
+          <div className="px-6 lg:px-8 py-5 bg-slate-50 border-t border-slate-100">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+              {[
+                { label: "Students", value: stats.studentCount, icon: GraduationCap, color: "text-emerald-600", bg: "bg-emerald-50" },
+                { label: "Teachers", value: stats.teacherCount, icon: UserCheck, color: "text-violet-600", bg: "bg-violet-50" },
+                { label: "Parents", value: stats.parentCount, icon: UserRound, color: "text-amber-600", bg: "bg-amber-50" },
+                { label: "Classes", value: stats.classCount, icon: LayoutGrid, color: "text-indigo-600", bg: "bg-indigo-50" },
+              ].map(({ label, value, icon: Icon, color, bg }) => (
+                <div key={label} className="text-center">
+                  <div className={`w-10 h-10 ${bg} rounded-xl flex items-center justify-center mx-auto mb-2`}>
+                    <Icon className={`w-5 h-5 ${color}`} />
+                  </div>
+                  <p className="text-2xl font-bold text-slate-800">{value}</p>
+                  <p className="text-slate-500 text-sm mt-0.5">{label}</p>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-white rounded-2xl p-1.5 shadow-sm ring-1 ring-slate-100 w-fit">
-        {tabs.map(({ id, label, icon: Icon, count }) => (
-          <button
-            key={id}
-            onClick={() => setActiveTab(id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition ${
-              activeTab === id
-                ? "bg-indigo-600 text-white shadow"
-                : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
-            }`}
-          >
-            <Icon className="w-4 h-4" />
-            {label}
-            {count !== undefined && (
-              <span
-                className={`text-xs font-semibold rounded-full px-1.5 py-0.5 ${
-                  activeTab === id ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
-                }`}
-              >
-                {count}
-              </span>
-            )}
-          </button>
-        ))}
+      <div className="bg-white rounded-2xl shadow-sm ring-1 ring-slate-100 p-1.5">
+        <div className="flex gap-1">
+          {tabs.map(({ id, label, icon: Icon, count }) => (
+            <button
+              key={id}
+              onClick={() => setActiveTab(id)}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                activeTab === id
+                  ? "bg-indigo-600 text-white shadow-lg"
+                  : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              <span className="font-medium">{label}</span>
+              {count !== undefined && (
+                <span
+                  className={`text-xs font-semibold rounded-full px-2 py-0.5 ${
+                    activeTab === id ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
+                  }`}
+                >
+                  {count}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Tab content */}
       <div className="bg-white rounded-2xl shadow-sm ring-1 ring-slate-100 overflow-hidden">
         {loading && !detail ? (
-          <div className="py-20 flex items-center justify-center gap-2 text-slate-400">
-            <Loader2 className="w-5 h-5 animate-spin" />
-            <span className="text-sm">Loading…</span>
+          <div className="py-24 flex flex-col items-center justify-center gap-3 text-slate-400">
+            <Loader2 className="w-8 h-8 animate-spin" />
+            <span className="text-sm font-medium">Loading school data…</span>
           </div>
         ) : (
           <>
@@ -234,32 +250,46 @@ function UsersTab({ users }: { users: UserProfile[] }) {
   }
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm">
+      <table className="w-full">
         <thead>
-          <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 text-left">
-            <th className="px-6 py-3 font-medium">Name</th>
-            <th className="px-6 py-3 font-medium">Email</th>
-            <th className="px-6 py-3 font-medium">Role</th>
-            <th className="px-6 py-3 font-medium">Phone</th>
+          <tr className="bg-slate-50 border-b border-slate-100">
+            <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">User</th>
+            <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Email</th>
+            <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Role</th>
+            <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Phone</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-50">
+        <tbody className="divide-y divide-slate-100">
           {users.map((u) => {
             const meta = ROLE_META[u.role];
             const Icon = meta.icon;
             return (
-              <tr key={u.id} className="hover:bg-slate-50/60 transition">
-                <td className="px-6 py-3.5 font-medium text-slate-700">{u.name}</td>
-                <td className="px-6 py-3.5 text-slate-500">{u.email}</td>
-                <td className="px-6 py-3.5">
+              <tr key={u.id} className="hover:bg-slate-50 transition-colors">
+                <td className="px-6 py-4">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 ${meta.bg} rounded-xl flex items-center justify-center`}>
+                      <Icon className={`w-5 h-5 ${meta.color}`} />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-slate-800">{u.name}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">ID: {u.id}</p>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-6 py-4">
+                  <p className="text-slate-600">{u.email}</p>
+                </td>
+                <td className="px-6 py-4">
                   <span
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${meta.bg} ${meta.color}`}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ${meta.bg} ${meta.color}`}
                   >
                     <Icon className="w-3 h-3" />
                     {meta.label}
                   </span>
                 </td>
-                <td className="px-6 py-3.5 text-slate-500">{u.phone || "—"}</td>
+                <td className="px-6 py-4">
+                  <p className="text-slate-600">{u.phone || "—"}</p>
+                </td>
               </tr>
             );
           })}
@@ -276,28 +306,40 @@ function StudentsTab({ students, classes }: { students: Student[]; classes: Clas
   }
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm">
+      <table className="w-full">
         <thead>
-          <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 text-left">
-            <th className="px-6 py-3 font-medium">Name</th>
-            <th className="px-6 py-3 font-medium">Username</th>
-            <th className="px-6 py-3 font-medium">Class</th>
+          <tr className="bg-slate-50 border-b border-slate-100">
+            <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Student</th>
+            <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Username</th>
+            <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Class</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-50">
+        <tbody className="divide-y divide-slate-100">
           {students.map((s) => {
             const cls = classMap[s.classId];
             return (
-              <tr key={s.id} className="hover:bg-slate-50/60 transition">
-                <td className="px-6 py-3.5 font-medium text-slate-700">{s.name}</td>
-                <td className="px-6 py-3.5 text-slate-500 font-mono text-xs">{s.username ?? "—"}</td>
-                <td className="px-6 py-3.5">
+              <tr key={s.id} className="hover:bg-slate-50 transition-colors">
+                <td className="px-6 py-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center">
+                      <GraduationCap className="w-5 h-5 text-emerald-600" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-slate-800">{s.name}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">ID: {s.id}</p>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-6 py-4">
+                  <p className="font-mono text-sm text-slate-600">{s.username ?? "—"}</p>
+                </td>
+                <td className="px-6 py-4">
                   {cls ? (
-                    <span className="bg-indigo-50 text-indigo-700 text-xs font-semibold px-2.5 py-1 rounded-full">
+                    <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700">
                       {cls.name} – {cls.section}
                     </span>
                   ) : (
-                    <span className="text-slate-300">—</span>
+                    <span className="text-slate-400">—</span>
                   )}
                 </td>
               </tr>
@@ -319,21 +361,40 @@ function ClassesTab({ classes, students }: { classes: ClassRoom[]; students: Stu
   }, {});
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm">
+      <table className="w-full">
         <thead>
-          <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 text-left">
-            <th className="px-6 py-3 font-medium">Class</th>
-            <th className="px-6 py-3 font-medium">Section</th>
-            <th className="px-6 py-3 font-medium text-center">Students</th>
+          <tr className="bg-slate-50 border-b border-slate-100">
+            <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Class</th>
+            <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Section</th>
+            <th className="px-6 py-4 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Students</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-50">
+        <tbody className="divide-y divide-slate-100">
           {classes.map((c) => (
-            <tr key={c.id} className="hover:bg-slate-50/60 transition">
-              <td className="px-6 py-3.5 font-semibold text-slate-700">{c.name}</td>
-              <td className="px-6 py-3.5 text-slate-500">{c.section}</td>
-              <td className="px-6 py-3.5 text-center font-medium text-slate-700">
-                {countByClass[c.id] ?? 0}
+            <tr key={c.id} className="hover:bg-slate-50 transition-colors">
+              <td className="px-6 py-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center">
+                    <LayoutGrid className="w-5 h-5 text-indigo-600" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-slate-800">{c.name}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">ID: {c.id}</p>
+                  </div>
+                </div>
+              </td>
+              <td className="px-6 py-4">
+                <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium bg-slate-100 text-slate-700">
+                  {c.section}
+                </span>
+              </td>
+              <td className="px-6 py-4">
+                <div className="flex items-center justify-center">
+                  <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold bg-amber-50 text-amber-700">
+                    <GraduationCap className="w-4 h-4" />
+                    {countByClass[c.id] ?? 0}
+                  </span>
+                </div>
               </td>
             </tr>
           ))}
@@ -345,9 +406,12 @@ function ClassesTab({ classes, students }: { classes: ClassRoom[]; students: Stu
 
 function EmptyState({ icon: Icon, message }: { icon: React.ElementType; message: string }) {
   return (
-    <div className="py-16 text-center">
-      <Icon className="w-10 h-10 text-slate-200 mx-auto mb-3" />
-      <p className="text-slate-400 font-medium">{message}</p>
+    <div className="py-20 text-center">
+      <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+        <Icon className="w-8 h-8 text-slate-300" />
+      </div>
+      <h3 className="text-lg font-semibold text-slate-700 mb-2">No data available</h3>
+      <p className="text-slate-500">{message}</p>
     </div>
   );
 }

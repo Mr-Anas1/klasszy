@@ -19,6 +19,7 @@ import { School } from "@/context/AppContext";
 
 interface Props {
   onViewSchool: (school: School) => void;
+  showCreateModal?: boolean;
 }
 
 const BLANK_CREATE: CreateSchoolData = {
@@ -35,12 +36,12 @@ const THEME_PRESETS = [
   "#EA580C", "#D97706", "#16A34A", "#0284C7",
 ];
 
-export default function SASchools({ onViewSchool }: Props) {
+export default function SASchools({ onViewSchool, showCreateModal }: Props) {
   const { schools, schoolStats, loadSchoolStats, createSchool, updateSchool, deleteSchool, showAlert } =
     useSuperAdmin();
 
   const [search, setSearch] = useState("");
-  const [showCreate, setShowCreate] = useState(false);
+  const [showCreate, setShowCreate] = useState(showCreateModal ?? false);
   const [editSchool, setEditSchool] = useState<School | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<School | null>(null);
 
@@ -55,6 +56,12 @@ export default function SASchools({ onViewSchool }: Props) {
       if (!schoolStats[s.id]) loadSchoolStats(s.id);
     });
   }, [schools]);
+
+  useEffect(() => {
+    if (showCreateModal) {
+      setShowCreate(true);
+    }
+  }, [showCreateModal]);
 
   const filtered = schools.filter(
     (s) =>
@@ -117,126 +124,168 @@ export default function SASchools({ onViewSchool }: Props) {
   };
 
   return (
-    <div className="space-y-5 max-w-6xl">
+    <div className="space-y-8 max-w-7xl">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl lg:text-3xl font-bold text-slate-900 mb-2">School Management</h1>
+        <p className="text-slate-500">Create and manage all registered schools in the platform</p>
+      </div>
+
       {/* Toolbar */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="relative flex-1 min-w-48">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+        <div className="relative flex-1 w-full sm:max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search schools…"
-            className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+            placeholder="Search schools by name or code…"
+            className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
           />
         </div>
         <button
           onClick={() => { setShowCreate(true); setFormError(""); }}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-semibold transition"
+          className="flex items-center gap-2 px-5 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition shadow-lg shadow-indigo-500/25"
         >
           <Plus className="w-4 h-4" />
           New School
         </button>
       </div>
 
-      {/* Table */}
+      {/* Schools Table */}
       <div className="bg-white rounded-2xl shadow-sm ring-1 ring-slate-100 overflow-hidden">
         {filtered.length === 0 ? (
-          <div className="py-20 text-center">
-            <Building2 className="w-10 h-10 text-slate-200 mx-auto mb-3" />
-            <p className="text-slate-400 font-medium">
-              {search ? "No schools match your search" : "No schools yet"}
+          <div className="py-24 text-center">
+            <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Building2 className="w-8 h-8 text-slate-300" />
+            </div>
+            <h3 className="text-lg font-semibold text-slate-700 mb-2">
+              {search ? "No schools found" : "No schools yet"}
+            </h3>
+            <p className="text-slate-500 mb-6">
+              {search ? "Try adjusting your search terms" : "Create your first school to get started"}
             </p>
+            {!search && (
+              <button
+                onClick={() => { setShowCreate(true); setFormError(""); }}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-colors"
+              >
+                Create School
+              </button>
+            )}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-slate-50 text-slate-500 text-left border-b border-slate-100">
-                  <th className="px-6 py-3 font-medium">School</th>
-                  <th className="px-6 py-3 font-medium">Code</th>
-                  <th className="px-6 py-3 font-medium text-center">
-                    <span className="inline-flex items-center gap-1">
-                      <GraduationCap className="w-3.5 h-3.5" /> Students
-                    </span>
-                  </th>
-                  <th className="px-6 py-3 font-medium text-center">
-                    <span className="inline-flex items-center gap-1">
-                      <UserCheck className="w-3.5 h-3.5" /> Teachers
-                    </span>
-                  </th>
-                  <th className="px-6 py-3 font-medium text-center">
-                    <span className="inline-flex items-center gap-1">
-                      <LayoutGrid className="w-3.5 h-3.5" /> Classes
-                    </span>
-                  </th>
-                  <th className="px-6 py-3 font-medium text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {filtered.map((school) => {
-                  const stats = schoolStats[school.id];
-                  return (
-                    <tr key={school.id} className="hover:bg-slate-50/60 transition">
-                      <td className="px-6 py-3.5">
-                        <div className="flex items-center gap-3">
-                          <div
-                            className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-sm font-bold shrink-0"
-                            style={{ backgroundColor: school.themeColor ?? "#4F46E5" }}
-                          >
-                            {school.name[0]}
+          <div>
+            {/* Table header */}
+            <div className="px-6 py-4 bg-slate-50 border-b border-slate-100">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-slate-700">
+                  {filtered.length} school{filtered.length !== 1 ? "s" : ""} found
+                </p>
+                {search && (
+                  <button
+                    onClick={() => setSearch("")}
+                    className="text-sm text-indigo-600 hover:text-indigo-700 font-medium transition-colors"
+                  >
+                    Clear search
+                  </button>
+                )}
+              </div>
+            </div>
+            
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-100">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">School</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Code</th>
+                    <th className="px-6 py-4 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Students</th>
+                    <th className="px-6 py-4 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Teachers</th>
+                    <th className="px-6 py-4 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Classes</th>
+                    <th className="px-6 py-4 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filtered.map((school) => {
+                    const stats = schoolStats[school.id];
+                    return (
+                      <tr key={school.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-4">
+                            <div
+                              className="w-12 h-12 rounded-xl flex items-center justify-center text-white text-sm font-bold shrink-0 shadow-lg"
+                              style={{ backgroundColor: school.themeColor ?? "#4F46E5" }}
+                            >
+                              {school.name[0]}
+                            </div>
+                            <div>
+                              <p className="font-semibold text-slate-800 text-base">{school.name}</p>
+                              <p className="text-xs text-slate-500 mt-0.5">ID: {school.id}</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-semibold text-slate-700">{school.name}</p>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-semibold bg-slate-100 text-slate-700">
+                            {school.code}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center justify-center">
+                            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold bg-emerald-50 text-emerald-700">
+                              <GraduationCap className="w-4 h-4" />
+                              {stats ? stats.studentCount : "—"}
+                            </span>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-3.5">
-                        <span className="font-mono text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md">
-                          {school.code}
-                        </span>
-                      </td>
-                      <td className="px-6 py-3.5 text-center font-medium text-slate-700">
-                        {stats ? stats.studentCount : <span className="text-slate-300">—</span>}
-                      </td>
-                      <td className="px-6 py-3.5 text-center font-medium text-slate-700">
-                        {stats ? stats.teacherCount : <span className="text-slate-300">—</span>}
-                      </td>
-                      <td className="px-6 py-3.5 text-center font-medium text-slate-700">
-                        {stats ? stats.classCount : <span className="text-slate-300">—</span>}
-                      </td>
-                      <td className="px-6 py-3.5">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => onViewSchool(school)}
-                            title="View details"
-                            className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
-                          >
-                            <ArrowRight className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => {
-                              setEditSchool(school);
-                              setEditForm({ name: school.name, themeColor: school.themeColor ?? "#4F46E5" });
-                            }}
-                            title="Edit"
-                            className="p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg transition"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => setDeleteTarget(school)}
-                            title="Delete"
-                            className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg transition"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center justify-center">
+                            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold bg-violet-50 text-violet-700">
+                              <UserCheck className="w-4 h-4" />
+                              {stats ? stats.teacherCount : "—"}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center justify-center">
+                            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold bg-indigo-50 text-indigo-700">
+                              <LayoutGrid className="w-4 h-4" />
+                              {stats ? stats.classCount : "—"}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => onViewSchool(school)}
+                              title="View details"
+                              className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                            >
+                              <ArrowRight className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                setEditSchool(school);
+                                setEditForm({ name: school.name, themeColor: school.themeColor ?? "#4F46E5" });
+                              }}
+                              title="Edit"
+                              className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => setDeleteTarget(school)}
+                              title="Delete"
+                              className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>
@@ -421,15 +470,18 @@ export default function SASchools({ onViewSchool }: Props) {
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-          <h3 className="font-semibold text-slate-800">{title}</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
+          <h3 className="text-lg font-bold text-slate-900">{title}</h3>
+          <button 
+            onClick={onClose} 
+            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
-        <div className="px-6 py-5">{children}</div>
+        <div className="px-6 py-6">{children}</div>
       </div>
     </div>
   );
@@ -438,8 +490,8 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
 function Section({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">{label}</p>
-      <div className="space-y-3">{children}</div>
+      <p className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-4">{label}</p>
+      <div className="space-y-4">{children}</div>
     </div>
   );
 }
@@ -457,10 +509,10 @@ function Field({
 }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-slate-700 mb-1">
+      <label className="block text-sm font-semibold text-slate-700 mb-2">
         {label}
-        {required && <span className="text-red-500 ml-0.5">*</span>}
-        {hint && <span className="ml-1.5 text-slate-400 font-normal text-xs">{hint}</span>}
+        {required && <span className="text-red-500 ml-1">*</span>}
+        {hint && <span className="ml-2 text-slate-400 font-normal text-xs">{hint}</span>}
       </label>
       {children}
     </div>
@@ -468,10 +520,10 @@ function Field({
 }
 
 const inputCls =
-  "w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition";
+  "w-full px-4 py-3 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition";
 
 const cancelCls =
-  "flex-1 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl font-medium text-sm transition";
+  "flex-1 py-3 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl font-semibold text-sm transition";
 
 const submitCls =
-  "flex-1 flex items-center justify-center gap-2 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-xl font-semibold text-sm transition";
+  "flex-1 flex items-center justify-center gap-2 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-xl font-semibold text-sm transition shadow-lg shadow-indigo-500/25";

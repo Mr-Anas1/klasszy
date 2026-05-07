@@ -11,6 +11,7 @@ import {
   query, 
   where,
   getDocs,
+  getDoc,
   setDoc,
   arrayUnion,
   Timestamp,
@@ -353,26 +354,54 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (fbUser) {
         try {
           // Fetch user profile from Firestore
-          const userQ = query(collection(db, "users"), where("email", "==", fbUser.email || ""));
+          const rawEmail = fbUser.email || "";
+          const normalizedEmail = rawEmail.toLowerCase();
+
+          const emailCandidates = Array.from(
+            new Set([rawEmail, normalizedEmail].filter(Boolean))
+          );
+
+          const userQ =
+            emailCandidates.length > 1
+              ? query(collection(db, "users"), where("email", "in", emailCandidates))
+              : query(collection(db, "users"), where("email", "==", rawEmail));
+
           const userDoc = await getDocs(userQ);
           
           if (!userDoc.empty) {
             const userData = { id: userDoc.docs[0].id, ...userDoc.docs[0].data() } as UserProfile;
             console.log("User Data Loaded:", userData.role, "School:", userData.schoolId);
+            console.log("Full user data:", userData);
             setUser(userData);
             setUserRole(userData.role);
             
             if (userData.schoolId) {
-              // Fetch school data - using the document ID directly if possible, or querying by 'id' field
-              const schoolQ = query(collection(db, "schools"), where("id", "==", userData.schoolId));
-              const schoolDoc = await getDocs(schoolQ);
-              
-              if (!schoolDoc.empty) {
-                const schoolData = { id: schoolDoc.docs[0].id, ...schoolDoc.docs[0].data() } as School;
-                setSchool(schoolData);
-                setIsLoggedIn(true);
-              } else {
-                console.warn("School not found for ID:", userData.schoolId);
+              // Fetch school data - try direct document reference first
+              try {
+                const schoolDocRef = doc(db, "schools", userData.schoolId);
+                const schoolDocSnap = await getDoc(schoolDocRef);
+                
+                if (schoolDocSnap.exists()) {
+                  const schoolData = { id: schoolDocSnap.id, ...schoolDocSnap.data() } as School;
+                  console.log("School data loaded:", schoolData.name);
+                  setSchool(schoolData);
+                  setIsLoggedIn(true);
+                  console.log("Login successful! User is now logged in.");
+                } else {
+                  // Fallback: query by 'id' field
+                  const schoolQ = query(collection(db, "schools"), where("id", "==", userData.schoolId));
+                  const schoolDoc = await getDocs(schoolQ);
+                  
+                  if (!schoolDoc.empty) {
+                    const schoolData = { id: schoolDoc.docs[0].id, ...schoolDoc.docs[0].data() } as School;
+                    setSchool(schoolData);
+                    setIsLoggedIn(true);
+                  } else {
+                    console.warn("School not found for ID:", userData.schoolId);
+                  }
+                }
+              } catch (error) {
+                console.error("Error fetching school:", error);
               }
             } else {
               console.warn("User has no schoolId:", userData.id);
@@ -528,21 +557,47 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (schoolCode: string, email: string, password: string): Promise<boolean> => {
     if (!schoolCode || !email) return false;
+    
+    let schoolSnap;
     try {
       // 1. Verify school code
       const schoolQ = query(collection(db, "schools"), where("code", "==", schoolCode));
-      const schoolSnap = await getDocs(schoolQ);
+      schoolSnap = await getDocs(schoolQ);
       if (schoolSnap.empty) {
         console.error("Invalid school code");
         return false;
       }
 
-      // 2. Authenticate (Handle username login)
-      const finalEmail = email.includes("@") ? email : `${email.toLowerCase()}@${schoolCode.toLowerCase()}.com`;
+      // 2. Check if user exists with the provided email (for admin accounts)
+      let finalEmail = email;
+      if (!email.includes("@")) {
+        // For username-based login (parents/students), construct email
+        finalEmail = `${email.toLowerCase()}@${schoolCode.toLowerCase()}.com`;
+      }
+
+      // Try to authenticate with the determined email
       await signInWithEmailAndPassword(auth, finalEmail, password);
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Login error:", error);
+      
+      // If email login fails and the input was a username, try the other approach
+      if (!email.includes("@") && error.code === "auth/user-not-found" && schoolSnap) {
+        try {
+          // Check if there's a user profile with this username as email
+          const userQ = query(collection(db, "users"), where("email", "==", email), where("schoolId", "==", schoolSnap.docs[0].id));
+          const userDoc = await getDocs(userQ);
+          
+          if (!userDoc.empty) {
+            // User exists with this email, try authenticating directly
+            await signInWithEmailAndPassword(auth, email, password);
+            return true;
+          }
+        } catch (retryError) {
+          console.error("Retry login error:", retryError);
+        }
+      }
+      
       return false;
     }
   };

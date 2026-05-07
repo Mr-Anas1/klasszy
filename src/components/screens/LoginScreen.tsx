@@ -1,18 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
-  BookOpen, 
-  ArrowRight, 
+  ArrowLeft, 
   Loader2,
-  Mail,
-  Lock,
   AlertCircle,
-  School,
-  ArrowLeft
+  GraduationCap
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
-import { seedDatabase } from "@/lib/seed-data";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import type { School as SchoolType } from "@/context/AppContext";
@@ -24,7 +19,7 @@ export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [seeding, setSeeding] = useState(false);
+  const [loadingText, setLoadingText] = useState("");
   const [error, setError] = useState("");
   const [step, setStep] = useState<"school" | "credentials">("school");
 
@@ -39,20 +34,30 @@ export default function LoginScreen() {
     return { id: d.id, ...(d.data() as any) } as SchoolType;
   };
 
-  const handleSchoolContinue = async () => {
+  const handleSchoolContinue = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!schoolCode.trim()) return;
+    
+    setLoadingText("Finding your school...");
     setLoading(true);
     setError("");
+    
     try {
       const s = await loadSchoolBranding(schoolCode);
       if (!s) {
-        setError("Invalid school code");
+        setError("Invalid school code. Please try again.");
+        setLoading(false);
         return;
       }
       setSchool(s);
-      setStep("credentials");
+      
+      // Artificial delay for smooth UI transition feeling
+      setTimeout(() => {
+        setStep("credentials");
+        setLoading(false);
+      }, 600);
     } catch {
       setError("Failed to verify school code");
-    } finally {
       setLoading(false);
     }
   };
@@ -65,173 +70,160 @@ export default function LoginScreen() {
     setError("");
   };
 
-  const handleSeed = async () => {
-    setSeeding(true);
-    const ok = await seedDatabase();
-    if (ok) {
-      showAlert(
-        "Database Ready", 
-        "Multi-school Demo initialized!\n\nSchool Code: SCH001\nAdmin: admin@school1.edu\nPassword: password123", 
-        "success"
-      );
-    } else {
-      showAlert("Setup Failed", "Failed to seed database. Please check your Firebase configuration and console logs.", "error");
-    }
-    setSeeding(false);
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!schoolCode || !email || !password) {
-      setError("Please fill all fields");
+    if (!email || !password) {
+      setError("Please fill in your credentials");
       return;
     }
+    
+    setLoadingText("Authenticating...");
     setLoading(true);
     setError("");
+    
     const success = await login(schoolCode, email, password);
     if (!success) {
-      setError("Invalid credentials or school code");
+      setError("Invalid email or password");
+      setLoading(false);
     }
-    setLoading(false);
+    // If successful, the context will update and unmount this screen automatically.
   };
 
   return (
-    <div className="flex flex-col min-h-full bg-white animate-fade-in">
-      <div
-        className="relative flex flex-col items-center justify-center pt-24 pb-12 px-8 overflow-hidden"
-        style={{ backgroundColor: school?.themeColor ?? "#1E1E26" }}
-      >
-        <div className="absolute top-0 left-0 w-80 h-80 rounded-full bg-white/10 blur-3xl -translate-x-1/2 -translate-y-1/2" />
+    <div className="relative min-h-screen bg-white overflow-hidden flex flex-col font-sans">
+      
+      {/* Decorative Diagonal Background Shapes (Inspired by image) */}
+      <div className="absolute top-[-10%] left-[-20%] w-[80%] h-[40%] bg-[#F0F5FF] rounded-[100px] -rotate-45 pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-20%] w-[80%] h-[40%] bg-[#F0F5FF] rounded-[100px] -rotate-45 pointer-events-none" />
+      <div className="absolute top-[30%] right-[-30%] w-[60%] h-[20%] bg-[#F8FAFF] rounded-[100px] -rotate-45 pointer-events-none" />
 
-        <div className="w-full max-w-md">
-          {step === "credentials" && (
-            <button
-              type="button"
-              onClick={handleBackToSchool}
-              className="mb-6 inline-flex items-center gap-2 text-white/80 hover:text-white text-xs font-black uppercase tracking-widest"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Change School
-            </button>
-          )}
-
-          <div className="flex items-center gap-4">
-            <div className="animate-scale-in w-16 h-16 bg-white/15 rounded-[24px] flex items-center justify-center shadow-2xl shrink-0 overflow-hidden">
-              {school?.logoUrl ? (
-                <img src={school.logoUrl} alt={school.name} className="w-full h-full object-cover" />
-              ) : (
-                <BookOpen className="w-8 h-8 text-white" />
-              )}
-            </div>
-            <div className="min-w-0">
-              <h1 className="text-2xl font-black text-white tracking-tight truncate">
-                {school?.name ?? "Klasszy LMS"}
-              </h1>
-              <p className="mt-1 text-xs text-white/70 font-black uppercase tracking-widest">
-                {step === "school" ? "Select your school" : "Sign in"}
-              </p>
-            </div>
+      {/* Full Screen Loading Overlay */}
+      {loading && (
+        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-gradient-to-br from-blue-600 to-indigo-800 animate-fade-in">
+          <div className="relative flex items-center justify-center w-24 h-24 mb-6">
+            <div className="absolute inset-0 border-4 border-white/20 border-t-white rounded-full animate-spin" />
+            <GraduationCap className="w-10 h-10 text-white animate-pulse" />
           </div>
+          <h2 className="text-white text-xl font-bold tracking-wide animate-pulse">{loadingText}</h2>
         </div>
+      )}
+
+      {/* Top Bar (Back Button) */}
+      <div className="relative z-10 pt-12 px-6 h-20">
+        {step === "credentials" && (
+          <button
+            type="button"
+            onClick={handleBackToSchool}
+            className="flex items-center gap-2 text-green-500 font-bold hover:text-green-600 transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            Back
+          </button>
+        )}
       </div>
 
-      <form onSubmit={handleSubmit} className="flex-1 px-8 py-8 space-y-6">
+      {/* Main Content Area */}
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-8 pb-12 w-full max-w-md mx-auto">
+        
+        {/* Logo Area */}
+        <div className="flex flex-col items-center mb-16 animate-fade-slide-up">
+          {step === "credentials" && school?.logoUrl ? (
+            <img src={school.logoUrl} alt={school.name} className="w-24 h-24 object-contain mb-4 drop-shadow-md rounded-2xl" />
+          ) : (
+            <img src="/Klasszy-logo.png" alt="Klasszy" className="w-24 h-24 object-contain mb-4 drop-shadow-md rounded-2xl" />
+          )}
+          <h1 className="text-[28px] font-black text-blue-950 tracking-tight text-center leading-tight">
+            {step === "school" ? "Welcome" : school?.name}
+          </h1>
+          <p className="text-sm font-bold text-gray-400 mt-2 uppercase tracking-widest">
+            {step === "school" ? "Enter your school code" : "Log In"}
+          </p>
+        </div>
+
+        {/* Error Message */}
         {error && (
-          <div className="bg-rose-50 border border-rose-100 p-4 rounded-2xl flex items-start gap-3 animate-shake">
-            <AlertCircle className="w-5 h-5 text-rose-500 shrink-0" />
-            <p className="text-xs font-bold text-rose-600 leading-tight">{error}</p>
+          <div className="w-full bg-rose-50 border border-rose-100 p-4 rounded-2xl flex items-start gap-3 mb-6 animate-shake">
+            <AlertCircle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
+            <p className="text-sm font-bold text-rose-600 leading-tight">{error}</p>
           </div>
         )}
 
-        <div className="space-y-4">
-          <div className="group">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4 mb-2 block">School Code</label>
-            <div className="relative">
-              <School className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300 group-focus-within:text-indigo-500 transition-colors" />
-              <input 
-                type="text" 
-                value={schoolCode}
-                onChange={(e) => setSchoolCode(e.target.value.toUpperCase())}
-                placeholder="e.g. SCH001"
-                className="w-full bg-gray-50 border-2 border-transparent focus:border-indigo-100 focus:bg-white rounded-[24px] py-5 pl-14 pr-6 text-sm font-bold text-gray-900 transition-all outline-none"
-                required
-                disabled={step === "credentials"}
-              />
-            </div>
-          </div>
+        {/* Forms */}
+        <div className="w-full animate-fade-in">
+          {step === "school" ? (
+            <form onSubmit={handleSchoolContinue} className="flex flex-col gap-10">
+              <div className="relative">
+                <input 
+                  type="text" 
+                  value={schoolCode}
+                  onChange={(e) => setSchoolCode(e.target.value.toUpperCase())}
+                  placeholder="e.g. SCH001"
+                  className="w-full bg-transparent border-b-2 border-gray-200 py-3 text-lg font-bold text-blue-950 placeholder:text-gray-300 focus:outline-none focus:border-blue-600 transition-colors"
+                  required
+                />
+              </div>
 
-          {step === "credentials" && (
-            <>
-              <div className="group">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4 mb-2 block">Email Address</label>
+              <button 
+                type="submit"
+                className="w-full bg-blue-600 text-white py-4 rounded-full font-bold text-base shadow-[0_8px_25px_rgba(37,99,235,0.35)] hover:-translate-y-1 hover:shadow-[0_12px_30px_rgba(37,99,235,0.45)] active:translate-y-0 transition-all"
+              >
+                Continue
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleSubmit} className="flex flex-col gap-8">
+              <div className="flex flex-col gap-6">
                 <div className="relative">
-                  <Mail className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300 group-focus-within:text-indigo-500 transition-colors" />
                   <input 
-                    type="text" 
+                    type="email" 
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Username or Email"
-                    className="w-full bg-gray-50 border-2 border-transparent focus:border-indigo-100 focus:bg-white rounded-[24px] py-5 pl-14 pr-6 text-sm font-bold text-gray-900 transition-all outline-none"
+                    placeholder="mail@example.com"
+                    className="w-full bg-transparent border-b-2 border-gray-200 py-3 text-base font-bold text-blue-950 placeholder:text-gray-300 focus:outline-none focus:border-blue-600 transition-colors"
                     required
                   />
                 </div>
-              </div>
 
-              <div className="group">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4 mb-2 block">Password</label>
                 <div className="relative">
-                  <Lock className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300 group-focus-within:text-indigo-500 transition-colors" />
                   <input 
                     type="password" 
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full bg-gray-50 border-2 border-transparent focus:border-indigo-100 focus:bg-white rounded-[24px] py-5 pl-14 pr-6 text-sm font-bold text-gray-900 transition-all outline-none"
+                    placeholder="••••••••••••••"
+                    className="w-full bg-transparent border-b-2 border-gray-200 py-3 text-xl tracking-widest font-black text-blue-950 placeholder:text-gray-300 placeholder:tracking-normal focus:outline-none focus:border-blue-600 transition-colors"
                     required
                   />
                 </div>
               </div>
-            </>
+
+              <div className="flex justify-start">
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    showAlert(
+                      "Contact Your School Admin", 
+                      "Please contact your school principal or administrator to reset your password.\n\nYou can also reach out via:\n• School office phone\n• Official school email\n• Parent portal access", 
+                      "success"
+                    );
+                  }}
+                  className="text-xs font-bold text-green-500 uppercase tracking-wider hover:text-green-600 transition-colors"
+                >
+                  Forgot your password?
+                </button>
+              </div>
+
+              <button 
+                type="submit"
+                className="w-full bg-blue-600 text-white py-4 rounded-full font-bold text-base shadow-[0_8px_25px_rgba(37,99,235,0.35)] hover:-translate-y-1 hover:shadow-[0_12px_30px_rgba(37,99,235,0.45)] active:translate-y-0 transition-all mt-2"
+              >
+                Log In
+              </button>
+            </form>
           )}
         </div>
 
-        {step === "school" ? (
-          <button 
-            type="button"
-            onClick={handleSchoolContinue}
-            disabled={loading || !schoolCode.trim()}
-            className="w-full bg-[#1E1E26] text-white py-6 rounded-[28px] font-black text-sm uppercase tracking-widest shadow-xl shadow-gray-200 active:scale-95 transition-all flex items-center justify-center gap-3"
-          >
-            {loading ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <>Continue <ArrowRight className="w-5 h-5" /></>
-            )}
-          </button>
-        ) : (
-          <button 
-            type="submit"
-            disabled={loading}
-            className="w-full bg-[#1E1E26] text-white py-6 rounded-[28px] font-black text-sm uppercase tracking-widest shadow-xl shadow-gray-200 active:scale-95 transition-all flex items-center justify-center gap-3"
-          >
-            {loading ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <>Sign In <ArrowRight className="w-5 h-5" /></>
-            )}
-          </button>
-        )}
+      </div>
 
-        <button 
-          type="button"
-          onClick={handleSeed}
-          disabled={seeding}
-          className="w-full mt-4 py-4 rounded-[24px] border-2 border-dashed border-gray-200 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:border-indigo-200 hover:text-indigo-400 transition-all flex items-center justify-center gap-2"
-        >
-          {seeding ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
-          {seeding ? "Initializing Multi-school..." : "Setup New Multi-school DB"}
-        </button>
-      </form>
-    </div>
+          </div>
   );
 }
