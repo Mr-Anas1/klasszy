@@ -130,7 +130,7 @@ export default function LoginScreen() {
           {step === "credentials" && school?.logoUrl ? (
             <img src={school.logoUrl} alt={school.name} className="w-24 h-24 object-contain mb-4 drop-shadow-md rounded-2xl" />
           ) : (
-            <img src="/Klasszy-logo.png" alt="Klasszy" className="w-24 h-24 object-contain mb-4 drop-shadow-md rounded-2xl" />
+            <img src="/public/Klasszy-logo.png" alt="Klasszy" className="w-24 h-24 object-contain mb-4 drop-shadow-md rounded-2xl" />
           )}
           <h1 className="text-[28px] font-black text-blue-950 tracking-tight text-center leading-tight">
             {step === "school" ? "Welcome" : school?.name}
