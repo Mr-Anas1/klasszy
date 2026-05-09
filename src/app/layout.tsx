@@ -12,9 +12,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: `${appConfig.appName} – Student LMS`,
-  description: `A modern Learning Management System for students at ${appConfig.appName}. Track attendance, homework, and academic progress.`,
-  keywords: ["LMS", "learning management system", "student app", "attendance tracker", "homework diary", appConfig.appName],
+  title: "Klasszy – Student LMS",
+  description: "A modern Learning Management System for students. Track attendance, homework, and academic progress.",
+  keywords: ["LMS", "learning management system", "student app", "attendance tracker", "homework diary", "Klasszy"],
 };
 
 export const viewport = {

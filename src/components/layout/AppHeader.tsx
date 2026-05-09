@@ -34,7 +34,7 @@ const TITLES: Record<string, string> = {
 };
 
 export default function AppHeader() {
-  const { user, userRole, activeTab, setActiveTab, handleGoBack } = useApp();
+  const { user, userRole, activeTab, setActiveTab, handleGoBack, school } = useApp();
   const isHome = activeTab === "home";
 
   const getRoleBadge = () => {
@@ -86,7 +86,7 @@ export default function AppHeader() {
             {getRoleBadge()}
           </div>
           <h1 className="text-lg font-black text-gray-900 leading-none mt-1">
-            {TITLES[activeTab] || appConfig.appName}
+            {TITLES[activeTab] || school?.name || "Klasszy"}
           </h1>
         </div>
       </div>

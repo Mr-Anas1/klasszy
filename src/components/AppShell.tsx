@@ -168,7 +168,7 @@ function DesktopSidebar() {
             <span className="text-white font-black text-sm">K</span>
           </div>
           <div>
-            <p className="font-black text-gray-900 text-sm">{appConfig.appName}</p>
+            <p className="font-black text-gray-900 text-sm">{school?.name || "Klasszy"}</p>
             <p className="text-[9px] font-black uppercase tracking-[2.5px] text-gray-400 mt-0.5">{roleLabel}</p>
           </div>
         </div>
