@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import React from "react";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import MobileWrapper from "@/components/layout/MobileWrapper";
+import { appConfig } from "@/configs/appConfig";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -10,9 +12,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Klasszy – Student LMS",
-  description: "A modern Learning Management System for students. Track attendance, homework, and academic progress.",
-  keywords: ["LMS", "learning management system", "student app", "attendance tracker", "homework diary", "Klasszy"],
+  title: `${appConfig.appName} – Student LMS`,
+  description: `A modern Learning Management System for students at ${appConfig.appName}. Track attendance, homework, and academic progress.`,
+  keywords: ["LMS", "learning management system", "student app", "attendance tracker", "homework diary", appConfig.appName],
 };
 
 export const viewport = {
@@ -28,7 +30,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} h-full`}>
+    <html
+      lang="en"
+      className={`${inter.variable} h-full`}
+      style={{ "--theme-primary": appConfig.themeColor } as React.CSSProperties}
+    >
       <body className="h-full bg-[#f5f5f7] antialiased">
         <MobileWrapper>
           {children}

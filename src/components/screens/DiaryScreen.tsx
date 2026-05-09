@@ -1,30 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
-import { CheckCircle2, Clock, Calendar } from "lucide-react";
+import { CheckCircle2, Clock, Calendar, BookOpen } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { Timestamp } from "firebase/firestore";
 
-const SUBJECTS = ["All", "Mathematics", "English", "Science", "History"];
-
-// Helper function to calculate color brightness and return a "dark" or "light" theme
-const getContrastTheme = (hexcolor?: string) => {
-  if (!hexcolor || !hexcolor.startsWith("#")) return "dark"; // Default to dark text
-  
-  let hex = hexcolor.replace("#", "");
-  if (hex.length === 3) hex = hex.split("").map(x => x + x).join("");
-  if (hex.length !== 6) return "dark";
-  
-  const r = parseInt(hex.substring(0, 2), 16);
-  const g = parseInt(hex.substring(2, 4), 16);
-  const b = parseInt(hex.substring(4, 6), 16);
-  
-  // YIQ equation to calculate perceived lightness
-  const yiq = (r * 299 + g * 587 + b * 114) / 1000;
-  
-  // If brightness is high (>= 128), return 'dark' (meaning dark text is needed)
-  return yiq >= 128 ? "dark" : "light";
-};
 
 const getLocalISODate = (d: Date) => {
   const year = d.getFullYear();
@@ -94,16 +74,6 @@ export default function DiaryScreen() {
             color: work.color
           };
           
-          // --- Dynamic Color Logic ---
-          const theme = getContrastTheme(work.color);
-          const isDarkText = theme === "dark";
-          
-          const textMain = isDarkText ? "text-gray-900" : "text-white";
-          const textMuted = isDarkText ? "text-gray-700" : "text-white/80";
-          const glassBg = isDarkText ? "bg-white/40 border-white/40" : "bg-black/20 border-black/10";
-          const primaryBtnBg = isDarkText ? "bg-gray-900 text-white border-transparent" : "bg-white text-gray-900 border-transparent";
-          const secondaryBtnBg = isDarkText ? "bg-white/50 text-gray-900 border-white/50" : "bg-black/20 text-white border-black/10";
-
           return (
             <div
               key={work.id}
@@ -111,53 +81,52 @@ export default function DiaryScreen() {
                 setSelectedHomework(homeworkData);
                 setActiveTab("homework_detail");
               }}
-              className="w-full rounded-3xl p-6 flex flex-col relative shadow-lg cursor-pointer group overflow-hidden active:scale-[0.98] transition-all hover:-translate-y-0.5"
+              className="w-full rounded-3xl bg-white border border-gray-100 p-5 flex flex-col relative shadow-sm cursor-pointer group overflow-hidden active:scale-[0.98] transition-all"
               style={{
-                backgroundColor: work.color || '#f3f4f6',
                 animationDelay: `${i * 50}ms`,
                 opacity: work.status === "Completed" ? 0.85 : 1,
               }}
             >
-              {/* Abstract Glass Shapes */}
-              <div className="absolute top-0 right-0 w-40 h-40 bg-white/20 rounded-full translate-x-1/3 -translate-y-1/3 blur-2xl pointer-events-none transition-transform duration-700 group-hover:scale-110" />
-              <div className="absolute bottom-0 left-0 w-32 h-32 bg-black/5 rounded-full -translate-x-1/3 translate-y-1/3 blur-xl pointer-events-none" />
+              <div
+                className="absolute left-0 top-0 bottom-0 w-1.5"
+                style={{ backgroundColor: work.color || "#4f46e5" }}
+              />
 
-              {/* Top Row: Status Only */}
-              <div className="flex items-start justify-between mb-5 relative z-10">
-                <div className="flex flex-col gap-2 items-start">
-                  {work.priority === "High" && (
-                     <span className="text-[9px] font-bold uppercase tracking-wider bg-rose-500/90 text-white backdrop-blur-md px-2 py-1 rounded-md shadow-sm">
-                       High Priority
-                     </span>
-                  )}
+              <div className="flex items-start justify-between gap-3 mb-4">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0">
+                    <BookOpen className="w-4 h-4 text-indigo-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10px] uppercase tracking-widest text-gray-400 font-black">Subject</p>
+                    <p className="text-base font-black text-gray-900 truncate">{work.subject}</p>
+                  </div>
                 </div>
 
-                <div className={`flex items-center gap-1.5 backdrop-blur-md border px-3 py-1.5 rounded-xl ${glassBg} ${textMain}`}>
+                <div className="flex items-center gap-1.5 border border-gray-200 px-3 py-1.5 rounded-xl bg-gray-50 text-gray-700 shrink-0">
                   {work.status === "Completed" ? (
                     <CheckCircle2 className="w-3.5 h-3.5" />
                   ) : (
-                    <Clock className="w-3.5 h-3.5 opacity-80" />
+                    <Clock className="w-3.5 h-3.5 text-amber-500" />
                   )}
-                  <span className="text-[10px] font-bold uppercase tracking-widest">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-700">
                     {work.status}
                   </span>
                 </div>
               </div>
 
-              {/* Task Title */}
-              <div className="relative z-10 flex-1 mb-6">
-                <h4 className={`text-xl font-black leading-snug pr-4 ${textMain}`}>
+              <div className="flex-1 mb-5">
+                <h4 className="text-lg font-black leading-snug text-gray-900">
                   {work.task}
                 </h4>
               </div>
 
-              {/* Footer Row: Due Date & Action */}
-              <div className={`flex items-end justify-between relative z-10 pt-4 border-t ${isDarkText ? 'border-black/10' : 'border-white/20'}`}>
-                <div className={`flex items-center gap-2 backdrop-blur-sm px-3 py-2 rounded-xl border ${glassBg}`}>
-                  <Calendar className={`w-4 h-4 ${textMuted}`} />
+              <div className="flex items-end justify-between pt-4 border-t border-gray-100">
+                <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-100 bg-gray-50">
+                  <Calendar className="w-4 h-4 text-gray-500" />
                   <div className="flex flex-col">
-                    <span className={`text-[8px] font-black uppercase tracking-widest opacity-80 ${textMuted}`}>Due Date</span>
-                    <span className={`text-[11px] font-bold ${textMain}`}>{work.dueDate}</span>
+                    <span className="text-[8px] font-black uppercase tracking-widest text-gray-500">Due Date</span>
+                    <span className="text-[11px] font-bold text-gray-800">{work.dueDate}</span>
                   </div>
                 </div>
 
@@ -166,8 +135,10 @@ export default function DiaryScreen() {
                     e.stopPropagation();
                     toggleDiaryEntry(work.id);
                   }}
-                  className={`px-5 py-2.5 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all active:scale-90 shadow-sm flex items-center gap-1.5 border backdrop-blur-md ${
-                    work.status === "Completed" ? secondaryBtnBg : primaryBtnBg
+                  className={`px-4 py-2.5 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all active:scale-90 shadow-sm flex items-center gap-1.5 ${
+                    work.status === "Completed"
+                      ? "bg-gray-100 text-gray-700 border border-gray-200"
+                      : "bg-indigo-600 text-white"
                   }`}
                 >
                   {work.status === "Completed" ? "Revert" : "Mark Done"}

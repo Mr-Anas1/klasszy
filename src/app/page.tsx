@@ -2,7 +2,9 @@
 
 import { AppProvider, useApp } from "@/context/AppContext";
 import LoginScreen from "@/components/screens/LoginScreen";
+import SchoolSelectionScreen from "@/components/screens/SchoolSelectionScreen";
 import AppShell from "@/components/AppShell";
+import { isMobileApp } from "@/configs/appConfig";
 
 import GlobalModal from "@/components/GlobalModal";
 
@@ -22,7 +24,12 @@ function RootContent() {
   
   return (
     <>
-      {isLoggedIn ? <AppShell /> : <LoginScreen />}
+      {isLoggedIn ? (
+        <AppShell />
+      ) : (
+        // For web, show school selection screen; for mobile app, show regular login screen
+        isMobileApp ? <LoginScreen /> : <SchoolSelectionScreen />
+      )}
       <GlobalModal />
     </>
   );

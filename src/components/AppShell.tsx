@@ -10,6 +10,7 @@ import {
   Newspaper, ChevronRight, ShieldCheck,
 } from "lucide-react";
 import { isNavItemEnabled } from "@/lib/feature-registry";
+import { appConfig } from "@/configs/appConfig";
 
 // Shared screens
 import ProfileScreen from "@/components/screens/ProfileScreen";
@@ -132,13 +133,18 @@ function getEffectiveTab(activeTab: string, userRole: string): string {
 function DesktopSidebar() {
   const { activeTab, setActiveTab, userRole, user, school } = useApp();
 
+  const mergedFeatures = {
+    ...(school?.features ?? {}),
+    ...Object.fromEntries(Object.entries(appConfig.features).filter(([, v]) => v === false)),
+  };
+
   const navItems =
     userRole === "admin"   ? ADMIN_NAV   :
     userRole === "teacher" ? TEACHER_NAV :
     userRole === "parent"  ? PARENT_NAV  :
                              STUDENT_NAV;
 
-  const filtered = navItems.filter(n => isNavItemEnabled(n.id, school?.features));
+  const filtered = navItems.filter(n => isNavItemEnabled(n.id, mergedFeatures));
   const effectiveTab = getEffectiveTab(activeTab, userRole ?? "student");
 
   const roleLabel =
@@ -155,11 +161,14 @@ function DesktopSidebar() {
       {/* Logo */}
       <div className="px-6 py-6 border-b border-gray-50">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200/60">
+          <div
+            className="w-10 h-10 rounded-2xl flex items-center justify-center shadow-lg"
+            style={{ backgroundColor: "var(--theme-primary)", boxShadow: "0 12px 24px rgba(0,0,0,0.12)" }}
+          >
             <span className="text-white font-black text-sm">K</span>
           </div>
           <div>
-            <p className="font-black text-gray-900 text-sm">Klasszy</p>
+            <p className="font-black text-gray-900 text-sm">{appConfig.appName}</p>
             <p className="text-[9px] font-black uppercase tracking-[2.5px] text-gray-400 mt-0.5">{roleLabel}</p>
           </div>
         </div>
@@ -175,9 +184,10 @@ function DesktopSidebar() {
               onClick={() => setActiveTab(id)}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all text-left ${
                 isActive
-                  ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100"
+                  ? "text-white shadow-lg"
                   : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
               }`}
+              style={isActive ? { backgroundColor: "var(--theme-primary)", boxShadow: "0 12px 24px rgba(0,0,0,0.10)" } : undefined}
             >
               <Icon className="w-4 h-4 shrink-0" />
               <span className="font-bold text-sm">{label}</span>
@@ -190,7 +200,7 @@ function DesktopSidebar() {
       <div className="p-4 border-t border-gray-100">
         <button
           onClick={() => setActiveTab("profile")}
-          className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-gray-50 transition-all group"
+          className="w-10 h-10 bg-indigo-100 rounded-2xl flex items-center justify-center active:scale-95 transition-transform shadow-sm lg:hidden"
         >
           <div className="w-9 h-9 bg-indigo-100 rounded-xl flex items-center justify-center shrink-0">
             <span className="text-sm font-black text-indigo-700">{initials}</span>
@@ -210,6 +220,15 @@ function DesktopSidebar() {
 
 export default function AppShell() {
   const { activeTab, userRole } = useApp();
+  const mobileRootTabs =
+    userRole === "admin"
+      ? ["home", "circulars", "profile"]
+      : userRole === "teacher"
+        ? ["home", "circulars", "profile"]
+        : userRole === "parent"
+          ? ["home", "attendance", "diary", "circulars", "notifications", "profile"]
+          : ["home", "attendance", "diary", "analysis", "circulars", "profile"];
+  const showBottomNav = mobileRootTabs.includes(activeTab);
 
   const getScreen = () => {
     // ── Admin ──────────────────────────────────────────────────────────────
@@ -300,8 +319,8 @@ export default function AppShell() {
         </main>
       </div>
 
-      {/* Bottom nav — absolute on mobile, hidden on desktop via lg:hidden */}
-      <BottomNav />
+      {/* Bottom nav stays on root tabs only */}
+      {showBottomNav && <BottomNav />}
     </div>
   );
 }

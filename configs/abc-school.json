@@ -1,0 +1,13 @@
+{
+  "appName": "ABC School",
+  "packageName": "com.klasszy.abc",
+  "schoolId": "abc_school",
+  "schoolCode": "SCH001",
+  "themeColor": "#4CAF50",
+  "logo": "/next.svg",
+  "features": {
+    "attendance": true,
+    "homework": true,
+    "fees": false
+  }
+}

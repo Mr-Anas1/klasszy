@@ -24,6 +24,7 @@ export default function TeacherDetailScreen() {
   const [isManagingClasses, setIsManagingClasses] = useState(false);
   const [detailsForm, setDetailsForm] = useState({
     phone: "",
+    password: "",
     address: "",
     qualifications: "",
     experience: "",
@@ -46,6 +47,7 @@ export default function TeacherDetailScreen() {
     if (selectedTeacher) {
       setDetailsForm({
         phone: selectedTeacher.phone || "",
+        password: selectedTeacher.password || "",
         address: "", // Would need to be added to UserProfile or separate collection
         qualifications: "",
         experience: "",
@@ -79,7 +81,8 @@ export default function TeacherDetailScreen() {
 
     try {
       await updateUserProfile(selectedTeacher.id, {
-        phone: detailsForm.phone
+        phone: detailsForm.phone,
+        password: detailsForm.password
       });
       showAlert("Success", "Teacher details updated successfully", "success");
       setIsEditingDetails(false);
@@ -174,6 +177,10 @@ export default function TeacherDetailScreen() {
             <p className="text-sm font-bold text-gray-900 truncate">{selectedTeacher.email}</p>
           </div>
           <div className="bg-gray-50 rounded-2xl p-4">
+            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Password</p>
+            <p className="text-sm font-bold text-gray-900">{selectedTeacher.password || "Not set"}</p>
+          </div>
+          <div className="bg-gray-50 rounded-2xl p-4 col-span-2">
             <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Phone</p>
             <p className="text-sm font-bold text-gray-900">{selectedTeacher.phone || "Not provided"}</p>
           </div>
@@ -230,6 +237,15 @@ export default function TeacherDetailScreen() {
               />
             </div>
             <div>
+              <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">Password</label>
+              <input
+                type="text"
+                value={detailsForm.password}
+                onChange={(e) => setDetailsForm({ ...detailsForm, password: e.target.value })}
+                className="w-full bg-gray-50 border-2 border-transparent rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:bg-white focus:border-indigo-100 transition-all"
+              />
+            </div>
+            <div>
               <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">Address</label>
               <textarea 
                 rows={3}
@@ -280,6 +296,13 @@ export default function TeacherDetailScreen() {
               <div>
                 <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Email</p>
                 <p className="text-sm font-bold text-gray-900">{selectedTeacher.email}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Check className="w-5 h-5 text-gray-400" />
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Password</p>
+                <p className="text-sm font-bold text-gray-900">{selectedTeacher.password || "Not set"}</p>
               </div>
             </div>
             <div className="flex items-center gap-3">

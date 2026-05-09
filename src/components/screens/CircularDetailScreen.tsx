@@ -37,12 +37,7 @@ export default function CircularDetailScreen() {
     <div className="pb-36 px-5 pt-4 animate-fade-slide-up min-h-full bg-[#f5f5f7]">
       {/* Header Controls */}
       <div className="flex items-center gap-4 mb-6">
-        <button 
-          onClick={handleBack}
-          className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center shadow-sm active:scale-90 transition-all"
-        >
-          <ArrowLeft className="w-5 h-5 text-gray-700" />
-        </button>
+        <div className="flex-1"></div>
         <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
           selectedCircular.targetAudience === 'both' ? 'bg-indigo-100 text-indigo-700' : 
           selectedCircular.targetAudience === 'teachers' ? 'bg-amber-100 text-amber-700' : 

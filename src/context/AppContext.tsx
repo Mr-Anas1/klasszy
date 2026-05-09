@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { 
   onSnapshot, 
   collection, 
@@ -27,7 +27,10 @@ import {
   getAuth,
   User as FirebaseUser 
 } from "firebase/auth";
+import { App as CapacitorApp } from "@capacitor/app";
+import { Capacitor } from "@capacitor/core";
 import { db, auth } from "@/lib/firebase";
+import { appConfig } from "@/configs/appConfig";
 
 // Secondary Auth instance to onboard users without logging out the admin
 const firebaseConfig = {
@@ -65,6 +68,7 @@ export interface UserProfile {
   name: string;
   phone: string;
   email: string;
+  password?: string;
   role: UserRole;
   classIds?: string[]; // for teachers
   studentIds?: string[]; // for parents
@@ -102,18 +106,6 @@ export interface Remark {
   teacherName: string;
   message: string;
   type: "academic" | "behavior" | "general";
-  createdAt: Timestamp;
-}
-
-export interface RemarkReply {
-  id: string;
-  schoolId: string;
-  remarkId: string;
-  studentId: string;
-  createdById: string;
-  createdByName: string;
-  createdByRole: UserRole;
-  message: string;
   createdAt: Timestamp;
 }
 
@@ -243,6 +235,7 @@ interface AppContextType {
   user: UserProfile | null;
   school: School | null;
   activeTab: string;
+  navigationHistory: string[];
   studentDetailReturnTab: string;
   students: Student[];
   classes: ClassRoom[];
@@ -256,7 +249,6 @@ interface AppContextType {
   skillStats: SkillStat[];
   studentDetails: StudentPersonalDetails[];
   remarks: Remark[];
-  remarkReplies: RemarkReply[];
   leaveApplications: LeaveApplication[];
   notifications: NotificationItem[];
   selectedStudent: Student | null;
@@ -267,6 +259,8 @@ interface AppContextType {
   login: (schoolCode: string, email: string, password: string) => Promise<boolean>;
   logout: () => void;
   setActiveTab: (tab: string) => void;
+  setActiveTabWithHistory: (tab: string) => void;
+  handleGoBack: () => void;
   setStudentDetailReturnTab: (tab: string) => void;
   setSelectedStudent: (student: Student | null) => void;
   setSelectedTeacher: (teacher: UserProfile | null) => void;
@@ -292,8 +286,6 @@ interface AppContextType {
   updateStudentPersonalDetails: (studentId: string, data: Omit<StudentPersonalDetails, "id" | "studentId" | "createdAt" | "updatedAt">) => Promise<void>;
   sendRemark: (studentId: string, message: string, type: "academic" | "behavior" | "general") => Promise<void>;
   getStudentRemarks: (studentId: string) => Remark[];
-  sendRemarkReply: (remarkId: string, studentId: string, message: string) => Promise<void>;
-  getRemarkReplies: (remarkId: string) => RemarkReply[];
   applyLeave: (data: { studentId: string; fromDate: string; toDate: string; reason: string }) => Promise<void>;
   teacherReviewLeave: (leaveId: string, data: { decision: "approve" | "reject"; remark?: string }) => Promise<void>;
   adminReviewLeave: (leaveId: string, data: { decision: "approve" | "reject"; remark?: string }) => Promise<void>;
@@ -319,7 +311,36 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [school, setSchool] = useState<School | null>(null);
   const [activeTab, setActiveTab] = useState("home");
+  const [navigationHistory, setNavigationHistory] = useState<string[]>(["home"]);
   const [studentDetailReturnTab, setStudentDetailReturnTab] = useState<string>("home");
+  
+  // Enhanced setActiveTab that tracks navigation history
+  const setActiveTabWithHistory = (tab: string) => {
+    setNavigationHistory(prev => {
+      const newHistory = [...prev];
+      if (newHistory[newHistory.length - 1] !== tab) {
+        newHistory.push(tab);
+      }
+      return newHistory;
+    });
+    setActiveTab(tab);
+  };
+
+  // Backward-compatible alias used across existing screens
+  const setActiveTabCompat = (tab: string) => setActiveTabWithHistory(tab);
+  
+  const handleGoBack = useCallback(() => {
+    setNavigationHistory(prev => {
+      if (prev.length <= 1) {
+        setActiveTab("home");
+        return ["home"];
+      }
+      const newHistory = prev.slice(0, -1);
+      const previousTab = newHistory[newHistory.length - 1];
+      setActiveTab(previousTab);
+      return newHistory;
+    });
+  }, []);
   const [loading, setLoading] = useState(true);
   const [circulars, setCirculars] = useState<Circular[]>([]);
   const [selectedCircular, setSelectedCircular] = useState<Circular | null>(null);
@@ -334,11 +355,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [usersList, setUsersList] = useState<UserProfile[]>([]);
   const [studentDetails, setStudentDetails] = useState<StudentPersonalDetails[]>([]);
   const [remarks, setRemarks] = useState<Remark[]>([]);
-  const [remarkReplies, setRemarkReplies] = useState<RemarkReply[]>([]);
   const [leaveApplications, setLeaveApplications] = useState<LeaveApplication[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [selectedTeacher, setSelectedTeacher] = useState<UserProfile | null>(null);
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    const listenerPromise = CapacitorApp.addListener("backButton", ({ canGoBack }) => {
+      // Use app tab history first, and only close app from the home/root screen.
+      if (activeTab !== "home") {
+        handleGoBack();
+        return;
+      }
+      if (!canGoBack) {
+        CapacitorApp.exitApp();
+      }
+    });
+
+    return () => {
+      listenerPromise.then((listener) => listener.remove()).catch(() => undefined);
+    };
+  }, [activeTab, handleGoBack]);
 
   const skillStats: SkillStat[] = [
     { label: "Concept Clarity", value: 88, color: "text-indigo-600", bgColor: "bg-indigo-50" },
@@ -489,13 +528,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setRemarks(sorted);
     });
 
-    const unsubRemarkReplies = onSnapshot(query(collection(db, "remarkReplies"), ...qOptions), (snap) => {
-      const sorted = snap.docs
-        .map(d => ({ id: d.id, ...d.data() } as RemarkReply))
-        .sort((a, b) => b.createdAt.seconds - a.createdAt.seconds);
-      setRemarkReplies(sorted);
-    });
-
     const unsubLeaveApplications = onSnapshot(query(collection(db, "leaveApplications"), ...qOptions), (snap) => {
       const sorted = snap.docs
         .map(d => ({ id: d.id, ...d.data() } as LeaveApplication))
@@ -511,7 +543,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => {
-      unsubStudents(); unsubClasses(); unsubAnnouncements(); unsubHomework(); unsubAttendance(); unsubStatus(); unsubUsers(); unsubCirculars(); unsubStudentDetails(); unsubRemarks(); unsubRemarkReplies(); unsubLeaveApplications(); unsubNotifications();
+      unsubStudents(); unsubClasses(); unsubAnnouncements(); unsubHomework(); unsubAttendance(); unsubStatus(); unsubUsers(); unsubCirculars(); unsubStudentDetails(); unsubRemarks(); unsubLeaveApplications(); unsubNotifications();
     };
   }, [isLoggedIn, school, user]);
 
@@ -550,6 +582,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [homework, homeworkStatus, user, userRole, students]);
 
   const isFeatureEnabled = (featureId: string): boolean => {
+    if (featureId in appConfig.features && appConfig.features[featureId] === false) return false;
     if (!school?.features) return true; // backward-compat: no config = all on
     if (featureId in school.features) return school.features[featureId];
     return true;
@@ -604,7 +637,32 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     await signOut(auth);
-    setActiveTab("home");
+    setActiveTabWithHistory("home");
+  };
+
+  // Navigation functions
+  const navigateToTab = (tab: string) => {
+    setNavigationHistory(prev => {
+      const newHistory = [...prev];
+      if (newHistory[newHistory.length - 1] !== tab) {
+        newHistory.push(tab);
+      }
+      return newHistory;
+    });
+    setActiveTab(tab);
+  };
+
+  const goBack = () => {
+    setNavigationHistory(prev => {
+      if (prev.length <= 1) {
+        setActiveTab("home");
+        return ["home"];
+      }
+      const newHistory = prev.slice(0, -1);
+      const previousTab = newHistory[newHistory.length - 1];
+      setActiveTab(previousTab);
+      return newHistory;
+    });
   };
 
   // --- CRUD FUNCTIONS ---
@@ -630,6 +688,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         schoolId: school.id,
         name: `${data.name}'s Parent`,
         email: email,
+        password: pass,
         role: "parent",
         studentIds: [], // We'll fill this or just use parentId in student doc
         createdAt: Timestamp.now()
@@ -641,6 +700,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         classId: data.classId,
         name: data.name,
         parentId: parentUid,
+        username: data.username,
+        password: pass,
         createdAt: Timestamp.now()
       });
 
@@ -737,6 +798,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         schoolId: school.id,
         name,
         email,
+        password: pass,
         role,
         classIds: classIds,
         studentIds: [],
@@ -762,6 +824,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const deleteClass = async (id: string) => {
+    if (school) {
+      const classStudentsQ = query(
+        collection(db, "students"),
+        where("schoolId", "==", school.id),
+        where("classId", "==", id)
+      );
+      const classStudentsSnap = await getDocs(classStudentsQ);
+      for (const studentDoc of classStudentsSnap.docs) {
+        await updateDoc(doc(db, "students", studentDoc.id), { classId: "" });
+      }
+    }
     await deleteDoc(doc(db, "classes", id));
   };
 
@@ -826,26 +899,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const getStudentRemarks = (studentId: string) => {
     return remarks.filter(r => r.studentId === studentId);
-  };
-
-  const sendRemarkReply = async (remarkId: string, studentId: string, message: string) => {
-    if (!school || !user) return;
-    if (!remarkId || !studentId || !message.trim()) return;
-
-    await addDoc(collection(db, "remarkReplies"), {
-      schoolId: school.id,
-      remarkId,
-      studentId,
-      createdById: user.id,
-      createdByName: user.name,
-      createdByRole: user.role,
-      message: message.trim(),
-      createdAt: Timestamp.now()
-    });
-  };
-
-  const getRemarkReplies = (remarkId: string) => {
-    return remarkReplies.filter(r => r.remarkId === remarkId);
   };
 
   const applyLeave = async (data: { studentId: string; fromDate: string; toDate: string; reason: string }) => {
@@ -974,7 +1027,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         school,
         isFeatureEnabled,
         activeTab,
-        setActiveTab,
+        navigationHistory,
+        setActiveTab: setActiveTabCompat,
+        setActiveTabWithHistory,
+        handleGoBack,
         studentDetailReturnTab,
         setStudentDetailReturnTab,
         loading,
@@ -994,7 +1050,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         skillStats,
         studentDetails,
         remarks,
-        remarkReplies,
         leaveApplications,
         notifications,
         selectedStudent,
@@ -1021,8 +1076,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         deleteCircular,
         sendRemark,
         getStudentRemarks,
-        sendRemarkReply,
-        getRemarkReplies,
         applyLeave,
         teacherReviewLeave,
         adminReviewLeave,

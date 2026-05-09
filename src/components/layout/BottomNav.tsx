@@ -1,18 +1,10 @@
 "use client";
 
 import React from "react";
-import { 
-  BookOpen, 
-  Calendar, 
-  FileText, 
-  BarChart3, 
-  User, 
-  Users, 
-  ShieldCheck,
-  Bell
-} from "lucide-react";
+import { BookOpen, Calendar, FileText, User, ShieldCheck, Bell } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { isNavItemEnabled } from "@/lib/feature-registry";
+import { appConfig } from "@/configs/appConfig";
 
 export default function BottomNav() {
   const { activeTab, setActiveTab, userRole, school } = useApp();
@@ -20,50 +12,53 @@ export default function BottomNav() {
   const getTabs = () => {
     if (userRole === "admin") {
       return [
-        { id: "home", Icon: ShieldCheck },
-        { id: "circulars", Icon: Bell },
-        { id: "profile", Icon: User },
+        { id: "home", Icon: ShieldCheck, label: "Home" },
+        { id: "circulars", Icon: Bell, label: "Circulars" },
+        { id: "profile", Icon: User, label: "Profile" },
       ];
     }
     if (userRole === "teacher") {
       return [
-        { id: "home", Icon: BookOpen },
-        { id: "circulars", Icon: Bell },
-        { id: "profile", Icon: User },
+        { id: "home", Icon: BookOpen, label: "Home" },
+        { id: "circulars", Icon: Bell, label: "Circulars" },
+        { id: "profile", Icon: User, label: "Profile" },
       ];
     }
     // Student / Parent default
     return [
-      { id: "home", Icon: BookOpen },
-      { id: "circulars", Icon: Bell },
-      { id: "attendance", Icon: Calendar },
-      { id: "diary", Icon: FileText },
-      { id: "profile", Icon: User },
+      { id: "home", Icon: BookOpen, label: "Home" },
+      { id: "circulars", Icon: Bell, label: "Circulars" },
+      { id: "attendance", Icon: Calendar, label: "Attendance" },
+      { id: "diary", Icon: FileText, label: "Diary" },
+      { id: "profile", Icon: User, label: "Profile" },
     ];
   };
 
-  const tabs = getTabs().filter(t => isNavItemEnabled(t.id, school?.features));
+  const mergedFeatures = {
+    ...(school?.features ?? {}),
+    ...Object.fromEntries(Object.entries(appConfig.features).filter(([, v]) => v === false)),
+  };
+
+  const tabs = getTabs().filter(t => isNavItemEnabled(t.id, mergedFeatures));
 
   return (
-    <div className="absolute bottom-8 left-1/2 -translate-x-1/2 w-[90%] glass-dark rounded-[40px] p-2 flex justify-around items-center shadow-2xl shadow-black/40 z-50 md:hidden">
-      {tabs.map(({ id, Icon }) => {
+    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-2 py-1 flex items-stretch justify-around z-50 md:hidden">
+      {tabs.map(({ id, Icon, label }) => {
         const isActive = activeTab === id;
         return (
           <button
             key={id}
             onClick={() => setActiveTab(id)}
-            className={`relative p-4 rounded-[28px] transition-all duration-300 active:scale-90 ${
-              isActive ? "bg-white" : "text-gray-500 hover:text-gray-400"
+            className={`flex flex-col items-center justify-center gap-0.5 py-2 rounded-xl transition-all duration-200 active:scale-95 ${
+              isActive ? "text-(--theme-primary) bg-indigo-50/60" : "text-gray-500"
             }`}
           >
             <Icon
-              className={`w-6 h-6 transition-colors duration-300 ${
-                isActive ? "text-indigo-600" : "text-gray-400"
-              }`}
+              className={`w-5 h-5 transition-colors duration-200 ${isActive ? "" : "text-gray-400"}`}
             />
-            {isActive && (
-              <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-indigo-600 rounded-full" />
-            )}
+            <span className={`text-[10px] font-bold leading-none ${isActive ? "text-(--theme-primary)" : "text-gray-500"}`}>
+              {label}
+            </span>
           </button>
         );
       })}

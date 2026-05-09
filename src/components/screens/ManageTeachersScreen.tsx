@@ -26,12 +26,6 @@ export default function ManageTeachersScreen() {
     <div className="pb-36 px-5 pt-4 animate-fade-slide-up">
       {/* Header */}
       <div className="flex items-center gap-4 mb-8">
-        <button 
-          onClick={() => setActiveTab("home")}
-          className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center shadow-sm active:scale-90"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
         <div className="flex-1">
           <h2 className="text-2xl font-black text-gray-900 leading-none">Manage Teachers</h2>
           <p className="text-sm text-gray-400 font-medium mt-1">Staff Directory & Accounts</p>

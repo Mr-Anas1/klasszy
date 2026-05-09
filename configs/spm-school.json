@@ -1,0 +1,13 @@
+{
+    "appName": "SPM School",
+    "packageName": "com.klasszy.spm",
+    "schoolId": "spm_school",
+    "schoolCode": "SCH003",
+    "themeColor": "#4CAF50",
+    "logo": "/next.svg",
+    "features": {
+        "attendance": true,
+        "homework": true,
+        "fees": false
+    }
+}

@@ -3,6 +3,7 @@
 import React from "react";
 import { Bell, ChevronLeft, User, ShieldCheck, GraduationCap, Users } from "lucide-react";
 import { useApp } from "@/context/AppContext";
+import { appConfig } from "@/configs/appConfig";
 
 const TITLES: Record<string, string> = {
   home:                 "Dashboard",
@@ -33,7 +34,7 @@ const TITLES: Record<string, string> = {
 };
 
 export default function AppHeader() {
-  const { user, userRole, activeTab, setActiveTab } = useApp();
+  const { user, userRole, activeTab, setActiveTab, handleGoBack } = useApp();
   const isHome = activeTab === "home";
 
   const getRoleBadge = () => {
@@ -56,7 +57,7 @@ export default function AppHeader() {
         {/* Mobile/tablet: avatar on home, back arrow on sub-screens */}
         {!isHome ? (
           <button
-            onClick={() => setActiveTab("home")}
+            onClick={handleGoBack}
             className="w-10 h-10 bg-gray-50 rounded-2xl flex items-center justify-center active:scale-95 transition-transform"
           >
             <ChevronLeft className="w-5 h-5 text-gray-800" />
@@ -85,7 +86,7 @@ export default function AppHeader() {
             {getRoleBadge()}
           </div>
           <h1 className="text-lg font-black text-gray-900 leading-none mt-1">
-            {TITLES[activeTab] || "Klasszy"}
+            {TITLES[activeTab] || appConfig.appName}
           </h1>
         </div>
       </div>
@@ -99,7 +100,10 @@ export default function AppHeader() {
           className="w-10 h-10 bg-gray-50 rounded-2xl flex items-center justify-center relative hover:bg-gray-100 transition-colors"
         >
           <Bell className="w-5 h-5 text-gray-500" />
-          <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-indigo-500 rounded-full border-2 border-white" />
+          <span
+            className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full border-2 border-white"
+            style={{ backgroundColor: "var(--theme-primary)" }}
+          />
         </button>
       </div>
     </div>

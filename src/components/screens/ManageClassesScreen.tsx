@@ -27,7 +27,7 @@ export default function ManageClassesScreen() {
     classes, students, addClass, deleteClass,
     attendance, usersList, markAttendance,
     setActiveTab, studentDetailReturnTab, setStudentDetailReturnTab,
-    showConfirm, showAlert, deleteStudent, setSelectedStudent,
+    showConfirm, showAlert, updateStudent, setSelectedStudent,
   } = useApp();
 
   const [view, setView] = useState<View>("grades");
@@ -40,6 +40,8 @@ export default function ManageClassesScreen() {
   const [attendanceDate, setAttendanceDate] = useState<string>(new Date().toISOString().split("T")[0]);
   const [tempAtt, setTempAtt] = useState<Record<string, "present" | "absent">>({});
   const [showEditAttendance, setShowEditAttendance] = useState(false);
+  const [showAddStudent, setShowAddStudent] = useState(false);
+  const [selectedExistingStudentId, setSelectedExistingStudentId] = useState("");
   const [showAddClass, setShowAddClass] = useState(false);
   const [cData, setCData] = useState({
     grade: STANDARD_GRADES[0],
@@ -113,12 +115,23 @@ export default function ManageClassesScreen() {
     );
   };
 
-  const handleDeleteStudent = (student: any) => {
+  const handleRemoveFromSection = (student: any) => {
     showConfirm(
-      "Delete Student?",
-      `Remove ${student.name}? This will also delete the linked parent account.`,
-      () => deleteStudent(student.id)
+      "Remove From Section?",
+      `Remove ${student.name} from this section? The student account will stay active and can be reassigned later.`,
+      async () => {
+        await updateStudent(student.id, { classId: "" });
+        showAlert("Updated", `${student.name} is now unassigned.`, "success");
+      }
     );
+  };
+
+  const handleAssignExistingStudent = async () => {
+    if (!selectedSection || !selectedExistingStudentId) return;
+    await updateStudent(selectedExistingStudentId, { classId: selectedSection.id });
+    setSelectedExistingStudentId("");
+    setShowAddStudent(false);
+    showAlert("Assigned", "Student assigned to section successfully.", "success");
   };
 
   // ── Sections View ──────────────────────────────────────────────────────────
@@ -204,6 +217,7 @@ export default function ManageClassesScreen() {
   // ── Section Students View ─────────────────────────────────────────────────────
   if (view === "section_students" && selectedSection) {
     const sectionStudents = students.filter(s => s.classId === selectedSection.id);
+    const unassignedStudents = students.filter(s => !s.classId?.trim());
     
     return (
       <div className="pb-36 px-5 pt-6 animate-fade-slide-up">
@@ -222,6 +236,15 @@ export default function ManageClassesScreen() {
               {sectionStudents.length} student{sectionStudents.length !== 1 ? "s" : ""} enrolled
             </p>
           </div>
+              <button
+                onClick={() => {
+                  setShowAddStudent(true);
+                }}
+            className="w-10 h-10 bg-emerald-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-emerald-200 active:scale-90 transition-transform"
+            aria-label="Add Student"
+          >
+            <Plus className="w-5 h-5" />
+          </button>
           <button
             onClick={() => {
               const now = new Date();
@@ -260,7 +283,7 @@ export default function ManageClassesScreen() {
                 <p className="text-[11px] font-bold text-gray-400 mt-0.5">Username: {student.username}</p>
               </button>
               <button
-                onClick={() => handleDeleteStudent(student)}
+                onClick={() => handleRemoveFromSection(student)}
                 className="w-9 h-9 bg-rose-50 text-rose-400 rounded-xl flex items-center justify-center opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all hover:bg-rose-500 hover:text-white shrink-0"
               >
                 <Trash2 className="w-4 h-4" />
@@ -276,6 +299,64 @@ export default function ManageClassesScreen() {
             </div>
           )}
         </div>
+
+        {showAddStudent && portalTarget && createPortal(
+          <div className="fixed inset-0 bg-black/60 z-[100] flex items-end">
+            <div className="bg-white w-full rounded-t-[40px] max-h-[90vh] flex flex-col">
+              <div className="px-6 pt-6 pb-4 flex items-center justify-between border-b border-gray-100 shrink-0">
+                <div>
+                  <h3 className="text-xl font-black text-gray-900">Add Student</h3>
+                  <p className="text-[11px] text-gray-400 font-medium mt-0.5">
+                    {selectedSection.name} - Section {selectedSection.section}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowAddStudent(false)}
+                  className="w-10 h-10 bg-gray-50 rounded-2xl flex items-center justify-center active:scale-90 transition-transform"
+                >
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto px-6 py-5">
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">
+                  Assign Existing Unassigned Student
+                </p>
+                <select
+                  value={selectedExistingStudentId}
+                  onChange={(e) => setSelectedExistingStudentId(e.target.value)}
+                  className="w-full bg-gray-50 rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                >
+                  <option value="">Select student</option>
+                  {unassignedStudents.map(student => (
+                    <option key={student.id} value={student.id}>
+                      {student.name} ({student.username || "No username"})
+                    </option>
+                  ))}
+                </select>
+
+                {unassignedStudents.length === 0 && (
+                  <div className="mt-4 bg-gray-50 border border-dashed border-gray-200 rounded-2xl p-4 text-center">
+                    <p className="text-sm font-semibold text-gray-500">
+                      No unassigned students available.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div className="px-6 pb-8 pt-4 shrink-0 bg-white border-t border-gray-100">
+                <button
+                  onClick={handleAssignExistingStudent}
+                  disabled={!selectedExistingStudentId}
+                  className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-black text-sm shadow-lg shadow-emerald-200 active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Assign Selected Student
+                </button>
+              </div>
+            </div>
+          </div>,
+          portalTarget
+        )}
       </div>
     );
   }
@@ -604,12 +685,6 @@ export default function ManageClassesScreen() {
     <>
       <div className="pb-36 px-5 pt-6 animate-fade-slide-up">
         <div className="flex items-center gap-4 mb-8">
-          <button
-            onClick={() => setActiveTab("home")}
-            className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center shadow-sm active:scale-90 transition-transform"
-          >
-            <ArrowLeft className="w-5 h-5 text-gray-700" />
-          </button>
           <div className="flex-1">
             <h2 className="text-2xl font-black text-gray-900">Classes</h2>
             <p className="text-sm text-gray-400 mt-0.5">Grade & Section Management</p>

@@ -11,17 +11,53 @@ import { useApp } from "@/context/AppContext";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import type { School as SchoolType } from "@/context/AppContext";
+import { appConfig } from "@/configs/appConfig";
 
 export default function LoginScreen() {
   const { login, showAlert } = useApp();
   const [schoolCode, setSchoolCode] = useState("");
   const [school, setSchool] = useState<SchoolType | null>(null);
-  const [email, setEmail] = useState("");
+  const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingText, setLoadingText] = useState("");
   const [error, setError] = useState("");
   const [step, setStep] = useState<"school" | "credentials">("school");
+
+  useEffect(() => {
+    const lockedCode = appConfig.schoolCode?.trim().toUpperCase();
+    if (!lockedCode) return;
+
+    let cancelled = false;
+    setSchoolCode(lockedCode);
+    setLoadingText("Preparing your school...");
+    setLoading(true);
+    setError("");
+
+    (async () => {
+      try {
+        const s = await loadSchoolBranding(lockedCode);
+        if (cancelled) return;
+        if (!s) {
+          setError("Configured school code is invalid. Please contact support.");
+          setLoading(false);
+          return;
+        }
+        setSchool(s);
+        setStep("credentials");
+        setLoading(false);
+      } catch {
+        if (cancelled) return;
+        setError("Failed to load school configuration");
+        setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const loadSchoolBranding = async (code: string): Promise<SchoolType | null> => {
     const trimmed = code.trim().toUpperCase();
@@ -63,16 +99,17 @@ export default function LoginScreen() {
   };
 
   const handleBackToSchool = () => {
+    if (appConfig.schoolCode) return;
     setStep("school");
     setSchool(null);
-    setEmail("");
+    setLoginId("");
     setPassword("");
     setError("");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
+    if (!loginId || !password) {
       setError("Please fill in your credentials");
       return;
     }
@@ -81,9 +118,9 @@ export default function LoginScreen() {
     setLoading(true);
     setError("");
     
-    const success = await login(schoolCode, email, password);
+    const success = await login(schoolCode, loginId.trim(), password);
     if (!success) {
-      setError("Invalid email or password");
+      setError("Invalid username/email or password");
       setLoading(false);
     }
     // If successful, the context will update and unmount this screen automatically.
@@ -99,7 +136,10 @@ export default function LoginScreen() {
 
       {/* Full Screen Loading Overlay */}
       {loading && (
-        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-gradient-to-br from-blue-600 to-indigo-800 animate-fade-in">
+        <div
+          className="absolute inset-0 z-50 flex flex-col items-center justify-center animate-fade-in"
+          style={{ background: `linear-gradient(135deg, ${appConfig.themeColor}, #111827)` }}
+        >
           <div className="relative flex items-center justify-center w-24 h-24 mb-6">
             <div className="absolute inset-0 border-4 border-white/20 border-t-white rounded-full animate-spin" />
             <GraduationCap className="w-10 h-10 text-white animate-pulse" />
@@ -114,7 +154,8 @@ export default function LoginScreen() {
           <button
             type="button"
             onClick={handleBackToSchool}
-            className="flex items-center gap-2 text-green-500 font-bold hover:text-green-600 transition-colors"
+            className="flex items-center gap-2 font-bold transition-colors"
+            style={{ color: "var(--theme-primary)" }}
           >
             <ArrowLeft className="w-5 h-5" />
             Back
@@ -130,7 +171,7 @@ export default function LoginScreen() {
           {step === "credentials" && school?.logoUrl ? (
             <img src={school.logoUrl} alt={school.name} className="w-24 h-24 object-contain mb-4 drop-shadow-md rounded-2xl" />
           ) : (
-            <img src="/public/Klasszy-logo.png" alt="Klasszy" className="w-24 h-24 object-contain mb-4 drop-shadow-md rounded-2xl" />
+            <img src={appConfig.logo} alt={appConfig.appName} className="w-24 h-24 object-contain mb-4 drop-shadow-md rounded-2xl" />
           )}
           <h1 className="text-[28px] font-black text-blue-950 tracking-tight text-center leading-tight">
             {step === "school" ? "Welcome" : school?.name}
@@ -150,7 +191,7 @@ export default function LoginScreen() {
 
         {/* Forms */}
         <div className="w-full animate-fade-in">
-          {step === "school" ? (
+          {step === "school" && !appConfig.schoolCode ? (
             <form onSubmit={handleSchoolContinue} className="flex flex-col gap-10">
               <div className="relative">
                 <input 
@@ -158,14 +199,15 @@ export default function LoginScreen() {
                   value={schoolCode}
                   onChange={(e) => setSchoolCode(e.target.value.toUpperCase())}
                   placeholder="e.g. SCH001"
-                  className="w-full bg-transparent border-b-2 border-gray-200 py-3 text-lg font-bold text-blue-950 placeholder:text-gray-300 focus:outline-none focus:border-blue-600 transition-colors"
+                  className="w-full bg-transparent border-b-2 border-gray-200 py-3 text-lg font-bold text-blue-950 placeholder:text-gray-300 focus:outline-none transition-colors"
                   required
                 />
               </div>
 
               <button 
                 type="submit"
-                className="w-full bg-blue-600 text-white py-4 rounded-full font-bold text-base shadow-[0_8px_25px_rgba(37,99,235,0.35)] hover:-translate-y-1 hover:shadow-[0_12px_30px_rgba(37,99,235,0.45)] active:translate-y-0 transition-all"
+                className="w-full text-white py-4 rounded-full font-bold text-base hover:-translate-y-1 active:translate-y-0 transition-all"
+                style={{ backgroundColor: "var(--theme-primary)", boxShadow: "0 8px 25px rgba(0,0,0,0.18)" }}
               >
                 Continue
               </button>
@@ -175,11 +217,13 @@ export default function LoginScreen() {
               <div className="flex flex-col gap-6">
                 <div className="relative">
                   <input 
-                    type="email" 
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="mail@example.com"
+                    type="text"
+                    value={loginId}
+                    onChange={(e) => setLoginId(e.target.value)}
+                    placeholder="Username or email"
                     className="w-full bg-transparent border-b-2 border-gray-200 py-3 text-base font-bold text-blue-950 placeholder:text-gray-300 focus:outline-none focus:border-blue-600 transition-colors"
+                    autoCapitalize="none"
+                    autoCorrect="off"
                     required
                   />
                 </div>
@@ -206,7 +250,8 @@ export default function LoginScreen() {
                       "success"
                     );
                   }}
-                  className="text-xs font-bold text-green-500 uppercase tracking-wider hover:text-green-600 transition-colors"
+                  className="text-xs font-bold uppercase tracking-wider transition-colors"
+                  style={{ color: "var(--theme-primary)" }}
                 >
                   Forgot your password?
                 </button>
@@ -214,7 +259,8 @@ export default function LoginScreen() {
 
               <button 
                 type="submit"
-                className="w-full bg-blue-600 text-white py-4 rounded-full font-bold text-base shadow-[0_8px_25px_rgba(37,99,235,0.35)] hover:-translate-y-1 hover:shadow-[0_12px_30px_rgba(37,99,235,0.45)] active:translate-y-0 transition-all mt-2"
+                className="w-full text-white py-4 rounded-full font-bold text-base hover:-translate-y-1 active:translate-y-0 transition-all mt-2"
+                style={{ backgroundColor: "var(--theme-primary)", boxShadow: "0 8px 25px rgba(0,0,0,0.18)" }}
               >
                 Log In
               </button>

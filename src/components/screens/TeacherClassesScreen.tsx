@@ -37,6 +37,7 @@ export default function TeacherClassesScreen() {
     assignHomework,
     sendNotification,
     addStudent,
+    updateStudent,
     setActiveTab,
     setSelectedStudent,
     setStudentDetailReturnTab,
@@ -76,6 +77,7 @@ export default function TeacherClassesScreen() {
   // Add student state
   const [showAddStudent, setShowAddStudent] = useState(false);
   const [sData, setSData] = useState({ name: "", username: "", password: "" });
+  const [selectedExistingStudentId, setSelectedExistingStudentId] = useState("");
 
   const portalTarget = useMemo(
     () => (typeof document !== "undefined" ? document.body : null),
@@ -85,6 +87,7 @@ export default function TeacherClassesScreen() {
   const classStudents = selectedClass
     ? students.filter(s => s.classId === selectedClass.id)
     : [];
+  const unassignedStudents = students.filter(s => !s.classId?.trim());
 
   useEffect(() => {
     if (!selectedClass) return;
@@ -236,6 +239,14 @@ export default function TeacherClassesScreen() {
     setSData({ name: "", username: "", password: "" });
     setShowAddStudent(false);
     triggerSuccess("Student added!");
+  };
+
+  const handleAssignExistingStudent = async () => {
+    if (!selectedClass || !selectedExistingStudentId) return;
+    await updateStudent(selectedExistingStudentId, { classId: selectedClass.id });
+    setSelectedExistingStudentId("");
+    setShowAddStudent(false);
+    triggerSuccess("Student assigned to class!");
   };
 
   const presentCount = Object.values(tempAtt).filter(v => v === "present").length;
@@ -962,6 +973,32 @@ export default function TeacherClassesScreen() {
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+              <div className="border border-gray-100 rounded-2xl p-4">
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Assign Existing Unassigned Student</p>
+                <select
+                  value={selectedExistingStudentId}
+                  onChange={e => setSelectedExistingStudentId(e.target.value)}
+                  className="w-full bg-gray-50 rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                >
+                  <option value="">Select student</option>
+                  {unassignedStudents.map(student => (
+                    <option key={student.id} value={student.id}>
+                      {student.name} ({student.username || "No username"})
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={handleAssignExistingStudent}
+                  disabled={!selectedExistingStudentId}
+                  className="w-full mt-3 bg-emerald-600 text-white py-3 rounded-2xl font-black text-xs shadow-lg shadow-emerald-200 active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Assign Selected Student
+                </button>
+              </div>
+
+              <div className="pt-2">
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Or Create New Student</p>
+              </div>
               <div>
                 <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Student Name *</p>
                 <input
