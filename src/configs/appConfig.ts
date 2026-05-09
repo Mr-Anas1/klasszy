@@ -21,7 +21,10 @@ function parseFromEnv(): AppConfig | null {
 }
 
 // Detect if we're on mobile app vs web
-export const isMobileApp = typeof window !== 'undefined' && 'Capacitor' in window;
+export const isMobileApp =
+  typeof window !== "undefined" &&
+  typeof (window as any).Capacitor?.isNativePlatform === "function" &&
+  (window as any).Capacitor.isNativePlatform();
 
 // For web, don't use default school config to allow school selection
 // For mobile app, use the configured school
