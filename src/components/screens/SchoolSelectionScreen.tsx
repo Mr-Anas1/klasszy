@@ -229,11 +229,11 @@ export default function SchoolSelectionScreen() {
             {/* Login Form */}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Email Address</label>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Username or Email</label>
                 <input
-                  type="email"
+                  type="text"
                   name="email"
-                  placeholder="Enter your email"
+                  placeholder="Enter your username or email"
                   className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:border-indigo-100 focus:bg-white transition-all"
                   required
                 />
