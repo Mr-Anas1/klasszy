@@ -4,7 +4,7 @@ import React, { useMemo, useState } from "react";
 import { Activity, Calendar, CheckCircle2, Clock, X, XCircle } from "lucide-react";
 import { createPortal } from "react-dom";
 import { useApp, LeaveApplication, UserProfile } from "@/context/AppContext";
-import { getLocalISODate } from "@/lib/date-window";
+import { getLocalISODate, type ISODateString } from "@/lib/date-window";
 
 type ParentTab = "pending" | "approved" | "rejected";
 
@@ -39,7 +39,7 @@ export default function LeaveManagementScreen() {
 
   const today = useMemo(() => getLocalISODate(new Date()), []);
   const [tab, setTab] = useState<ParentTab>("pending");
-  const [form, setForm] = useState({ date: today, reason: "" });
+  const [form, setForm] = useState<{ date: ISODateString; reason: string }>({ date: today, reason: "" });
   const [submitting, setSubmitting] = useState(false);
 
   const myStudents = useMemo(() => students.filter((s) => s.parentId === user?.id), [students, user?.id]);
@@ -312,7 +312,7 @@ export default function LeaveManagementScreen() {
             <input
               type="date"
               value={form.date}
-              onChange={(e) => setForm((p) => ({ ...p, date: e.target.value }))}
+              onChange={(e) => setForm((p) => ({ ...p, date: e.target.value as ISODateString }))}
               className="w-full bg-gray-50 border-2 border-transparent focus:border-indigo-100 rounded-2xl px-4 py-3 text-sm font-bold focus:outline-none transition-all"
             />
           </div>
