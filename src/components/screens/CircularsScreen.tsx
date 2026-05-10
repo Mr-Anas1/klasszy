@@ -70,12 +70,10 @@ export default function CircularsScreen() {
     try {
       let attachmentUrl: string | undefined;
       let attachmentType: "image" | "pdf" | undefined;
-      let attachmentDeleteToken: string | undefined;
       if (circFile) {
         const up = await uploadToCloudinary(circFile);
         attachmentUrl = up.secureUrl;
         attachmentType = attachmentTypeFromFile(circFile);
-        attachmentDeleteToken = up.deleteToken;
       }
       const body = circData.description.trim();
       await sendCircular({
@@ -85,7 +83,6 @@ export default function CircularsScreen() {
         targetAudience: circData.targetAudience,
         attachmentUrl,
         attachmentType,
-        attachmentDeleteToken,
       });
       setCircData({ title: "", description: "", targetAudience: "both" });
       setCircFile(null);

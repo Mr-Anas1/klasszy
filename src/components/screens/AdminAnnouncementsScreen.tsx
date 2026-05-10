@@ -62,12 +62,10 @@ export default function AdminAnnouncementsScreen() {
     try {
       let attachmentUrl: string | undefined;
       let attachmentType: "image" | "pdf" | undefined;
-      let attachmentDeleteToken: string | undefined;
       if (circFile) {
         const up = await uploadToCloudinary(circFile);
         attachmentUrl = up.secureUrl;
         attachmentType = attachmentTypeFromFile(circFile);
-        attachmentDeleteToken = up.deleteToken;
       }
 
       const body = circData.description.trim();
@@ -78,7 +76,6 @@ export default function AdminAnnouncementsScreen() {
         targetAudience: circData.targetAudience,
         attachmentUrl,
         attachmentType,
-        attachmentDeleteToken,
       });
       setCircData({ title: "", description: "", targetAudience: "both" });
       setCircFile(null);

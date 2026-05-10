@@ -185,7 +185,6 @@ export interface Circular {
   imageUrl?: string;
   attachmentUrl?: string;
   attachmentType?: "image" | "pdf";
-  attachmentDeleteToken?: string;
   createdBy: string;
   /** Same as createdBy (user id); set for new Cloudinary-based uploads */
   uploadedBy?: string;
@@ -908,19 +907,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const deleteCircular = async (id: string) => {
-    const ref = doc(db, "circulars", id);
-    const snap = await getDoc(ref);
-    const data = (snap.exists() ? (snap.data() as { attachmentDeleteToken?: string }) : null) || null;
-    const token = data?.attachmentDeleteToken;
-    await deleteDoc(ref);
-    if (token) {
-      try {
-        const { deleteFromCloudinaryByToken } = await import("@/lib/cloudinary");
-        await deleteFromCloudinaryByToken(token);
-      } catch {
-        // Best-effort cleanup only
-      }
-    }
+    await deleteDoc(doc(db, "circulars", id));
   };
 
   const updateStudentPersonalDetails = async (studentId: string, data: Omit<StudentPersonalDetails, "id" | "studentId" | "createdAt" | "updatedAt">) => {
