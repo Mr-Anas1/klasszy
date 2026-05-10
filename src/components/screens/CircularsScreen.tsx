@@ -98,23 +98,15 @@ export default function CircularsScreen() {
   return (
     <div className="pb-36 px-5 pt-4 animate-fade-slide-up">
       {/* Header */}
-      <div className="flex items-center gap-4 mb-8">
-        <button 
-          onClick={() => setActiveTab("home")}
-          className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center shadow-sm active:scale-90"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
+      <div className="mb-8">
         <div className="flex-1">
           <h2 className="text-2xl font-black text-gray-900 leading-none">Official Circulars</h2>
-          <p className="text-sm text-gray-400 font-medium mt-1">School Notices & Updates</p>
+          <p className="text-sm text-gray-400 mt-0.5">School notices & updates</p>
         </div>
         {canPostCircular && (
           <button
-            type="button"
             onClick={() => setShowCompose(true)}
-            className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-500 text-white shadow-lg shadow-amber-200 active:scale-95"
-            aria-label="Post circular"
+            className="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-200 active:scale-90 transition-transform"
           >
             <Megaphone className="h-5 w-5" />
           </button>

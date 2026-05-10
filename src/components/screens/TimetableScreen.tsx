@@ -40,15 +40,7 @@ export default function TimetableScreen() {
 
   return (
     <div className="animate-fade-slide-up px-5 pb-36 pt-4">
-      <div className="mb-8 flex items-center gap-4">
-        <button
-          type="button"
-          onClick={() => setActiveTab("home")}
-          className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white shadow-sm active:scale-90"
-          aria-label="Back"
-        >
-          <ArrowLeft className="h-5 w-5 text-gray-800" />
-        </button>
+      <div className="mb-8">
         <div className="min-w-0 flex-1">
           <h2 className="text-2xl font-black leading-none text-gray-900">Timetable</h2>
           <p className="mt-1 text-sm font-medium text-gray-400">{label}</p>

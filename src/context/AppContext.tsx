@@ -301,6 +301,7 @@ interface AppContextType {
   sendCircular: (data: Omit<Circular, "id" | "schoolId" | "createdBy" | "createdAt" | "uploadedBy">) => Promise<void>;
   deleteCircular: (id: string) => Promise<void>;
   upsertClassTimetable: (classId: string, data: { attachmentUrl: string; attachmentType: "image" | "pdf" }) => Promise<void>;
+  deleteClassTimetable: (classId: string) => Promise<void>;
   selectedCircular: Circular | null;
   setSelectedCircular: (c: Circular | null) => void;
   updateStudentPersonalDetails: (studentId: string, data: Omit<StudentPersonalDetails, "id" | "studentId" | "createdAt" | "updatedAt">) => Promise<void>;
@@ -906,6 +907,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     toast.success("Timetable updated for this class.", "Timetable saved");
   };
 
+  const deleteClassTimetable = async (classId: string) => {
+    if (!school || !user) return;
+    await deleteDoc(doc(db, "timetables", classId));
+    toast.success("Timetable deleted successfully.", "Timetable removed");
+  };
+
   const deleteCircular = async (id: string) => {
     await deleteDoc(doc(db, "circulars", id));
   };
@@ -1126,6 +1133,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         sendCircular,
         deleteCircular,
         upsertClassTimetable,
+        deleteClassTimetable,
         sendRemark,
         getStudentRemarks,
         applyLeave,

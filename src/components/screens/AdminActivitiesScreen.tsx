@@ -50,24 +50,17 @@ export default function AdminActivitiesScreen() {
     <>
       <div className="pb-36 px-5 pt-6 animate-fade-slide-up">
         {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
-          <button
-            onClick={() => setActiveTab("home")}
-            className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center shadow-sm active:scale-90 transition-transform"
-          >
-            <ArrowLeft className="w-5 h-5 text-gray-700" />
-          </button>
+        <div className="mb-8">
           <div className="flex-1">
             <h2 className="text-2xl font-black text-gray-900 leading-none">Activities</h2>
-            <p className="text-sm text-gray-400 font-medium mt-0.5">Leave Applications</p>
+            <p className="text-sm text-gray-400 mt-0.5">Leave requests & more</p>
           </div>
-          {pending.length > 0 && (
-            <div className="bg-rose-100 px-3 py-1.5 rounded-xl">
-              <span className="text-xs font-black text-rose-600">{pending.length} pending</span>
-            </div>
-          )}
         </div>
-
+        {pending.length > 0 && (
+          <div className="bg-rose-100 px-3 py-1.5 rounded-xl">
+            <span className="text-xs font-black text-rose-600">{pending.length} pending</span>
+          </div>
+        )}
         {/* Pending leaves */}
         {pending.length > 0 && (
           <section className="mb-8">

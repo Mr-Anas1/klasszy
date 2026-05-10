@@ -34,7 +34,7 @@ export default function ManageClassesScreen() {
     attendance, usersList, markAttendance,
     setActiveTab, studentDetailReturnTab, setStudentDetailReturnTab,
     showConfirm, showAlert, updateStudent, setSelectedStudent,
-    timetables, upsertClassTimetable,
+    timetables, upsertClassTimetable, deleteClassTimetable,
   } = useApp();
 
   const [view, setView] = useState<View>("grades");
@@ -175,6 +175,15 @@ export default function ManageClassesScreen() {
     }
   };
 
+  const handleDeleteTimetable = () => {
+    if (!selectedSection) return;
+    showConfirm(
+      "Delete Timetable?",
+      "This will remove the current timetable for this class. You can upload a new one anytime.",
+      () => deleteClassTimetable(selectedSection.id)
+    );
+  };
+
   // ── Sections View ──────────────────────────────────────────────────────────
   if (view === "sections" && selectedGrade) {
     const sections = gradesMap[selectedGrade] || [];
@@ -308,7 +317,18 @@ export default function ManageClassesScreen() {
               <CalendarClock className="h-6 w-6" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-black text-gray-900">Class timetable</p>
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-black text-gray-900">Class timetable</p>
+                {sectionTimetable && (
+                  <button
+                    onClick={handleDeleteTimetable}
+                    className="w-8 h-8 bg-rose-50 text-rose-500 rounded-xl flex items-center justify-center hover:bg-rose-100 transition-colors"
+                    aria-label="Delete timetable"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
               <p className="mt-0.5 text-[11px] font-medium text-gray-400">
                 {sectionTimetable
                   ? `Last updated ${sectionTimetable.updatedAt?.seconds ? new Date(sectionTimetable.updatedAt.seconds * 1000).toLocaleDateString() : "recently"}`

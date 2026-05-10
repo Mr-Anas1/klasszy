@@ -148,21 +148,7 @@ export default function LoginScreen() {
         </div>
       )}
 
-      {/* Top Bar (Back Button) */}
-      <div className="relative z-10 pt-12 px-6 h-20">
-        {step === "credentials" && (
-          <button
-            type="button"
-            onClick={handleBackToSchool}
-            className="flex items-center gap-2 font-bold transition-colors"
-            style={{ color: "var(--theme-primary)" }}
-          >
-            <ArrowLeft className="w-5 h-5" />
-            Back
-          </button>
-        )}
-      </div>
-
+      
       {/* Main Content Area */}
       <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-8 pb-12 w-full max-w-md mx-auto">
         

@@ -59,19 +59,10 @@ export default function HomeworkDetailScreen() {
   return (
     <div className="pb-36 px-5 pt-4 min-h-full bg-[#f5f5f7] animate-fade-slide-up">
       {/* Header */}
-      <div className="flex items-center gap-4 mb-8">
-        <button 
-          onClick={() => {
-            setSelectedHomework(null);
-            setActiveTab("diary");
-          }}
-          className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center shadow-sm active:scale-90"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
+      <div className="mb-8">
         <div className="flex-1">
           <h2 className="text-2xl font-black text-gray-900 leading-none">Homework Details</h2>
-          <p className="text-sm text-gray-400 font-medium mt-1">View task information</p>
+          <p className="text-sm text-gray-400 mt-0.5">View task information</p>
         </div>
       </div>
 

@@ -1,6 +1,8 @@
 "use client";
 
 import React from "react";
+import { Capacitor } from "@capacitor/core";
+import { Browser } from "@capacitor/browser";
 import { ExternalLink, FileText, Image as ImageIcon, Download } from "lucide-react";
 
 type Props = {
@@ -19,9 +21,23 @@ export default function FileAttachmentPreview({ url, type, title, className = ""
     return u.replace("/upload/", "/upload/fl_attachment/");
   };
 
+  const openExternal = async (targetUrl: string) => {
+    if (Capacitor.isNativePlatform()) {
+      try {
+        await Browser.open({ url: targetUrl });
+        return;
+      } catch {
+        // Fallback to in-app navigation
+      }
+    }
+
+    // Web fallback
+    window.location.assign(targetUrl);
+  };
+
   const handleDownload = (downloadUrl: string) => {
     // Navigate directly; Cloudinary will respond with Content-Disposition: attachment.
-    window.location.assign(downloadUrl);
+    void openExternal(downloadUrl);
   };
 
   const downloadViaBlob = async (fileUrl: string, filename: string) => {
@@ -54,11 +70,15 @@ export default function FileAttachmentPreview({ url, type, title, className = ""
       <button
         onClick={async () => {
           try {
+            if (Capacitor.isNativePlatform()) {
+              await openExternal(withCloudinaryAttachmentFlag(url));
+              return;
+            }
             // Use the exact secure_url bytes and save locally (works even if fl_attachment is broken).
             await downloadViaBlob(url, `${filenameBase}.pdf`);
           } catch {
             // Fallback: try Cloudinary forced download if the blob path is blocked.
-            handleDownload(withCloudinaryAttachmentFlag(url));
+            await openExternal(withCloudinaryAttachmentFlag(url));
           }
         }}
         className={`flex items-center gap-4 rounded-3xl border border-gray-100 bg-white p-5 shadow-sm transition-all hover:border-indigo-100 hover:shadow-md ${className}`}

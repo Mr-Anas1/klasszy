@@ -84,11 +84,7 @@ export default function ProfileScreen() {
           </div>
         </div>
 
-        <button className="mt-6 relative z-10 flex items-center gap-2 px-6 py-2.5 bg-white/10 rounded-2xl text-white text-[10px] font-black uppercase tracking-widest hover:bg-white/20 transition-all">
-          <Edit3 className="w-3.5 h-3.5" />
-          Edit Profile
-        </button>
-      </div>
+              </div>
 
       {/* Contact info */}
       <div className="animate-fade-slide-up delay-100 mt-5 bg-white rounded-[28px] p-6 border border-gray-100 space-y-5 shadow-sm">

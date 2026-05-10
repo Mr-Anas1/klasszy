@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   ArrowLeft, BookOpen, Calendar, CalendarClock, Users, CheckCircle2, Check, X, Plus, ChevronLeft, ChevronRight, Info,
-  Paperclip, Loader2,
+  Paperclip, Loader2, Trash2,
 } from "lucide-react";
 import { useApp, UserProfile, ClassRoom, AttendanceRecord } from "@/context/AppContext";
 import MobileSelect from "@/components/ui/MobileSelect";
@@ -49,10 +49,12 @@ export default function TeacherClassesScreen() {
     setSelectedStudent,
     setStudentDetailReturnTab,
     showAlert,
+    showConfirm,
     attendance,
     usersList,
     timetables,
     upsertClassTimetable,
+    deleteClassTimetable,
   } = useApp();
   const teacher = user as UserProfile;
 
@@ -288,6 +290,15 @@ export default function TeacherClassesScreen() {
     }
   };
 
+  const handleDeleteTimetable = () => {
+    if (!selectedClass) return;
+    showConfirm(
+      "Delete Timetable?",
+      "This will remove the current timetable for this class. You can upload a new one anytime.",
+      () => deleteClassTimetable(selectedClass.id)
+    );
+  };
+
   const presentCount = Object.values(tempAtt).filter(v => v === "present").length;
   const classTimetable = selectedClass ? timetables.find((t) => t.classId === selectedClass.id) : undefined;
 
@@ -295,13 +306,7 @@ export default function TeacherClassesScreen() {
   if (!selectedClass) {
     return (
       <div className="pb-36 px-5 pt-6 animate-fade-slide-up lg:pb-10 lg:px-8 lg:max-w-6xl lg:mx-auto">
-        <div className="flex items-center gap-4 mb-8">
-          <button
-            onClick={() => setActiveTab("home")}
-            className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center shadow-sm active:scale-90 transition-transform"
-          >
-            <ArrowLeft className="w-5 h-5 text-gray-700" />
-          </button>
+        <div className="mb-8">
           <div>
             <h2 className="text-2xl font-black text-gray-900">My Classes</h2>
             <p className="text-sm text-gray-400 mt-0.5">Select a class to manage</p>
@@ -363,19 +368,7 @@ export default function TeacherClassesScreen() {
 
       <div className="pb-36 px-5 pt-6 animate-fade-slide-up lg:pb-10 lg:px-8 lg:max-w-6xl lg:mx-auto">
         {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
-          <button
-            onClick={() => {
-              if (viewMode === "attendance_history") {
-                setViewMode("manage");
-              } else {
-                setSelectedClass(null);
-              }
-            }}
-            className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center shadow-sm active:scale-90 transition-transform"
-          >
-            <ArrowLeft className="w-5 h-5 text-gray-700" />
-          </button>
+        <div className="mb-8">
           <div className="flex-1">
             <h2 className="text-2xl font-black text-gray-900">
               {selectedClass.name} — {selectedClass.section}
@@ -634,7 +627,7 @@ export default function TeacherClassesScreen() {
           </>
         ) : (
           <>
-            {/* Action Cards */}
+            {/* Action Cards Grid */}
             <div className="grid grid-cols-2 gap-4 mb-8">
               <button
                 onClick={openAttendance}
@@ -660,26 +653,21 @@ export default function TeacherClassesScreen() {
                   <p className="text-[10px] text-white/70 mt-0.5">Set a new task</p>
                 </div>
               </button>
-            </div>
-
-            <div className="mb-8">
               <button
                 onClick={() => setViewMode("attendance_history")}
-                className="w-full bg-white p-5 lg:p-4 rounded-[28px] lg:rounded-xl border border-gray-100 shadow-sm flex items-center justify-between hover:border-indigo-100 transition-all"
+                className="bg-purple-600 text-white p-5 lg:p-4 rounded-[28px] lg:rounded-xl flex flex-col gap-3 lg:gap-2 active:scale-95 transition-transform shadow-lg shadow-purple-200 text-left"
               >
-                <div>
-                  <p className="text-sm font-black text-gray-900">Attendance History</p>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">Calendar view</p>
+                <div className="bg-white/20 w-10 h-10 lg:w-8 lg:h-8 rounded-xl flex items-center justify-center">
+                  <Calendar className="w-5 h-5 lg:w-4 lg:h-4" />
                 </div>
-                <Calendar className="w-5 h-5 lg:w-4 lg:h-4 text-indigo-400" />
+                <div>
+                  <p className="text-sm font-black">Attendance History</p>
+                  <p className="text-[10px] text-white/70 mt-0.5">Calendar view</p>
+                </div>
               </button>
-            </div>
-
-            {/* Notification Card */}
-            <div className="mb-8">
               <button
                 onClick={() => setAction("notification")}
-                className="w-full bg-amber-500 text-white p-5 lg:p-4 rounded-[28px] lg:rounded-xl flex flex-col gap-3 lg:gap-2 active:scale-95 transition-transform shadow-lg shadow-amber-200 text-left"
+                className="bg-amber-500 text-white p-5 lg:p-4 rounded-[28px] lg:rounded-xl flex flex-col gap-3 lg:gap-2 active:scale-95 transition-transform shadow-lg shadow-amber-200 text-left"
               >
                 <div className="bg-white/20 w-10 h-10 lg:w-8 lg:h-8 rounded-xl flex items-center justify-center">
                   <Users className="w-5 h-5 lg:w-4 lg:h-4" />
@@ -698,7 +686,18 @@ export default function TeacherClassesScreen() {
                   <CalendarClock className="h-6 w-6" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-black text-gray-900">Class timetable</p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-black text-gray-900">Class timetable</p>
+                    {classTimetable && (
+                      <button
+                        onClick={handleDeleteTimetable}
+                        className="w-8 h-8 bg-rose-50 text-rose-500 rounded-xl flex items-center justify-center hover:bg-rose-100 transition-colors"
+                        aria-label="Delete timetable"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                   <p className="mt-0.5 text-[11px] font-medium text-gray-400">
                     {classTimetable
                       ? `Last updated ${classTimetable.updatedAt?.seconds ? new Date(classTimetable.updatedAt.seconds * 1000).toLocaleDateString() : "recently"}`

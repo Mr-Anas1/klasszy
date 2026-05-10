@@ -18,14 +18,8 @@ export default function RemarksScreen() {
   return (
     <div className="pb-36 px-5 pt-4">
       {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
-        <button 
-          onClick={() => setActiveTab("home")}
-          className="text-gray-400 hover:text-gray-600 transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <h1 className="text-xl font-black text-gray-900 flex-1">
+      <div className="mb-8">
+        <h1 className="text-xl font-black text-gray-900">
           Remarks History
         </h1>
       </div>
