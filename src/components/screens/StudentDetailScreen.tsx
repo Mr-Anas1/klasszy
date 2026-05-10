@@ -34,6 +34,7 @@ export default function StudentDetailScreen() {
   const [isEditingDetails, setIsEditingDetails] = useState(false);
   const [isAddingStudent, setIsAddingStudent] = useState(false);
   const [detailsForm, setDetailsForm] = useState({
+    gender: "",
     fatherName: "",
     motherName: "",
     bloodGroup: "",
@@ -96,6 +97,7 @@ export default function StudentDetailScreen() {
   useEffect(() => {
     if (studentPersonalDetails) {
       setDetailsForm({
+        gender: (studentPersonalDetails as any).gender || "",
         fatherName: studentPersonalDetails.fatherName,
         motherName: studentPersonalDetails.motherName,
         bloodGroup: studentPersonalDetails.bloodGroup,
@@ -149,13 +151,14 @@ export default function StudentDetailScreen() {
   };
 
   const handleSaveDetails = async () => {
-    if (!detailsForm.fatherName || !detailsForm.motherName || !detailsForm.parentPhone || !detailsForm.address) {
-      showAlert("Error", "Please fill in all required fields", "error");
+    if (!detailsForm.gender || !detailsForm.fatherName || !detailsForm.motherName || !detailsForm.parentPhone || !detailsForm.address) {
+      showAlert("Error", "Gender, father name, mother name, parent phone and address are required.", "error");
       return;
     }
 
     try {
       await updateStudentPersonalDetails(selectedStudent!.id, {
+        gender: detailsForm.gender as "male" | "female",
         fatherName: detailsForm.fatherName,
         motherName: detailsForm.motherName,
         bloodGroup: detailsForm.bloodGroup,
@@ -419,6 +422,19 @@ export default function StudentDetailScreen() {
             {isEditingDetails ? (
               <div>
                 <div className="space-y-4">
+                  <div>
+                    <MobileSelect
+                      label="Gender *"
+                      placeholder="Select"
+                      value={detailsForm.gender}
+                      onChange={(v) => setDetailsForm({ ...detailsForm, gender: v })}
+                      options={[
+                        { value: "male", label: "Male" },
+                        { value: "female", label: "Female" },
+                      ]}
+                      searchable={false}
+                    />
+                  </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">Father's Name</label>

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Users, Megaphone, Activity, School, ShieldCheck } from "lucide-react";
+import { Users, Megaphone, Activity, School, ShieldCheck, CalendarCheck } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { isNavItemEnabled } from "@/lib/feature-registry";
 
@@ -40,11 +40,19 @@ export default function AdminDashboardScreen() {
     {
       id: "admin_activities",
       Icon: Activity,
-      title: "Activities",
+      title: "Leave Management",
       subtitle: `${pendingLeaves} pending leaves`,
       bg: "bg-rose-500",
       shadow: "shadow-rose-200",
       badge: pendingLeaves > 0 ? pendingLeaves : null,
+    },
+    {
+      id: "exams",
+      Icon: CalendarCheck,
+      title: "Exams",
+      subtitle: "Publish exam schedules",
+      bg: "bg-indigo-600",
+      shadow: "shadow-indigo-200",
     },
     {
       id: "manage_classes",
@@ -68,19 +76,26 @@ export default function AdminDashboardScreen() {
         </h2>
       </div>
 
-      {/* Stats Strip */}
-      <div className="grid grid-cols-3 gap-3 mb-8">
-        {[
-          { label: "Students", val: students.length, color: "text-indigo-600", bg: "bg-indigo-50" },
-          { label: "Teachers", val: teachers.length, color: "text-violet-600", bg: "bg-violet-50" },
-          { label: "Classes", val: classes.length, color: "text-emerald-600", bg: "bg-emerald-50" },
-        ].map((s) => (
-          <div key={s.label} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-center">
-            <div className={`text-2xl font-black ${s.color}`}>{s.val}</div>
-            <div className="text-[9px] font-black uppercase tracking-widest text-gray-400 mt-0.5">{s.label}</div>
+      {/* Insights */}
+      <button
+        onClick={() => setActiveTab("analysis")}
+        className="w-full mb-8 bg-gray-900 text-white rounded-[32px] p-6 shadow-lg shadow-gray-900/20 text-left relative overflow-hidden active:scale-[0.99] transition-transform"
+      >
+        <div className="absolute -right-8 -top-10 w-40 h-40 bg-white/10 rounded-full" />
+        <div className="absolute -left-10 -bottom-12 w-44 h-44 bg-white/5 rounded-full" />
+        <div className="relative flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-white/60">School Insights</p>
+            <p className="text-xl font-black mt-2">Analytics overview</p>
+            <p className="text-sm text-white/70 mt-1">
+              {students.length} students · {teachers.length} teachers · {classes.length} classes
+            </p>
           </div>
-        ))}
-      </div>
+          <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center">
+            <Users className="w-6 h-6 text-white/80" />
+          </div>
+        </div>
+      </button>
 
       {/* Section label */}
       <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4">Quick Access</p>

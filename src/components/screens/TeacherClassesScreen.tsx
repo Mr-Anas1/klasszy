@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { useApp, UserProfile, ClassRoom, AttendanceRecord } from "@/context/AppContext";
 import MobileSelect from "@/components/ui/MobileSelect";
+import MobileMultiSelect from "@/components/ui/MobileMultiSelect";
 import {
   attachmentTypeFromFile,
   isCloudinaryConfigured,
@@ -16,6 +17,7 @@ import {
 
 type Action = "none" | "attendance" | "homework" | "notification";
 type Priority = "High" | "Medium" | "Low";
+type ClassMessageAction = "none" | "notification" | "fee_reminder";
 
 type ViewMode = "manage" | "attendance_history";
 
@@ -62,6 +64,7 @@ export default function TeacherClassesScreen() {
 
   const [selectedClass, setSelectedClass] = useState<ClassRoom | null>(null);
   const [action, setAction] = useState<Action>("none");
+  const [messageAction, setMessageAction] = useState<ClassMessageAction>("none");
   const [successMsg, setSuccessMsg] = useState("");
   const [viewMode, setViewMode] = useState<ViewMode>("manage");
 
@@ -77,7 +80,7 @@ export default function TeacherClassesScreen() {
 
   // Homework state
   const [hwForm, setHwForm] = useState({
-    subject: "", task: "", dueDate: "", priority: "Medium" as Priority,
+    subject: "", task: "", issueDate: "", dueDate: "", priority: "Medium" as Priority,
   });
 
   // Notification state
@@ -85,9 +88,20 @@ export default function TeacherClassesScreen() {
     title: "", message: "", type: "general" as "fee" | "general" | "instruction"
   });
 
+  // Fee reminder state (reuses notifications collection/type="fee")
+  const [feeForm, setFeeForm] = useState({
+    title: "",
+    description: "",
+    feeAmount: "",
+    dueDate: "",
+    paymentNote: "",
+    audience: "all" as "all" | "selected",
+  });
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+
   // Add student state
   const [showAddStudent, setShowAddStudent] = useState(false);
-  const [sData, setSData] = useState({ name: "", username: "", password: "" });
+  const [sData, setSData] = useState({ name: "", username: "", password: "", gender: "" as "" | "male" | "female" });
   const [selectedExistingStudentId, setSelectedExistingStudentId] = useState("");
   const [ttFile, setTtFile] = useState<File | null>(null);
   const [ttUploading, setTtUploading] = useState(false);
@@ -193,8 +207,8 @@ export default function TeacherClassesScreen() {
   };
 
   const handleAssignHomework = async () => {
-    if (!hwForm.subject || !hwForm.task || !hwForm.dueDate || !selectedClass) {
-      showAlert("Missing Info", "Subject, task description, and due date are required.", "error");
+    if (!hwForm.subject || !hwForm.task || !hwForm.issueDate || !hwForm.dueDate || !selectedClass) {
+      showAlert("Missing Info", "Subject, task description, issue date, and due date are required.", "error");
       return;
     }
     const colors = ["#8BB0FE", "#FF9B85", "#BA94FF", "#FFD580", "#6EE7B7"];
@@ -204,11 +218,12 @@ export default function TeacherClassesScreen() {
       className: `${selectedClass.name}-${selectedClass.section}`,
       subject: hwForm.subject,
       task: hwForm.task,
+      issueDate: hwForm.issueDate,
       dueDate: hwForm.dueDate,
       priority: hwForm.priority,
       color,
     });
-    setHwForm({ subject: "", task: "", dueDate: "", priority: "Medium" });
+    setHwForm({ subject: "", task: "", issueDate: "", dueDate: "", priority: "Medium" });
     setAction("none");
   };
 
@@ -234,10 +249,58 @@ export default function TeacherClassesScreen() {
     triggerSuccess("Notification sent to all parents!");
   };
 
+  const handleSendFeeReminder = async () => {
+    if (!selectedClass) return;
+    if (!feeForm.title.trim() || !feeForm.description.trim()) {
+      showAlert("Missing Info", "Title and description are required.", "error");
+      return;
+    }
+    const targets =
+      feeForm.audience === "all"
+        ? classStudents.map((s) => s.id)
+        : selectedStudentIds;
+    if (targets.length === 0) {
+      showAlert("Pick students", "Select at least one student.", "error");
+      return;
+    }
+
+    const amt = feeForm.feeAmount.trim() ? Number(feeForm.feeAmount) : undefined;
+    if (feeForm.feeAmount.trim() && (Number.isNaN(amt) || amt! < 0)) {
+      showAlert("Invalid amount", "Fee amount must be a valid number.", "error");
+      return;
+    }
+
+    for (const studentId of targets) {
+      const notificationData: any = {
+        title: feeForm.title.trim(),
+        message: feeForm.description.trim(),
+        type: "fee",
+        targetType: "student",
+        targetId: studentId,
+        feeAmount: amt,
+        dueDate: feeForm.dueDate || undefined,
+        audienceScope: feeForm.audience,
+        targetStudentIds: feeForm.audience === "selected" ? targets : undefined,
+      };
+      
+      // Only include paymentNote if it has content
+      if (feeForm.paymentNote.trim()) {
+        notificationData.paymentNote = feeForm.paymentNote.trim();
+      }
+      
+      await sendNotification(notificationData);
+    }
+
+    setFeeForm({ title: "", description: "", feeAmount: "", dueDate: "", paymentNote: "", audience: "all" });
+    setSelectedStudentIds([]);
+    setMessageAction("none");
+    triggerSuccess("Fee reminder sent!");
+  };
+
   const handleAddStudent = async () => {
     if (!selectedClass) return;
-    if (!sData.name || !sData.username) {
-      showAlert("Missing Info", "Student name and username are required.", "error");
+    if (!sData.name || !sData.username || !sData.gender) {
+      showAlert("Missing Info", "Student name, username and gender are required.", "error");
       return;
     }
 
@@ -245,10 +308,11 @@ export default function TeacherClassesScreen() {
       name: sData.name,
       classId: selectedClass.id,
       username: sData.username,
+      gender: sData.gender,
       password: sData.password || undefined,
     });
 
-    setSData({ name: "", username: "", password: "" });
+    setSData({ name: "", username: "", password: "", gender: "" });
     setShowAddStudent(false);
     triggerSuccess("Student added!");
   };
@@ -514,7 +578,7 @@ export default function TeacherClassesScreen() {
             })()}
 
             {selectedDate && portalTarget && createPortal(
-              <div className="fixed inset-0 bg-black/60 z-[120] flex items-end">
+              <div className="fixed inset-0 bg-black/60 z-120 flex items-end">
                 <button
                   type="button"
                   onClick={() => setSelectedDate(null)}
@@ -677,6 +741,18 @@ export default function TeacherClassesScreen() {
                   <p className="text-[10px] text-white/70 mt-0.5">Message all parents</p>
                 </div>
               </button>
+              <button
+                onClick={() => setMessageAction("fee_reminder")}
+                className="bg-emerald-600 text-white p-5 lg:p-4 rounded-[28px] lg:rounded-xl flex flex-col gap-3 lg:gap-2 active:scale-95 transition-transform shadow-lg shadow-emerald-200 text-left"
+              >
+                <div className="bg-white/20 w-10 h-10 lg:w-8 lg:h-8 rounded-xl flex items-center justify-center">
+                  <Users className="w-5 h-5 lg:w-4 lg:h-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-black">Fee Reminder</p>
+                  <p className="text-[10px] text-white/70 mt-0.5">Notify parents about fees</p>
+                </div>
+              </button>
             </div>
 
             {/* Class timetable — Cloudinary + Firestore */}
@@ -775,7 +851,7 @@ export default function TeacherClassesScreen() {
 
       {/* ── Attendance Modal ───────────────────────────────────────────────── */}
       {action === "attendance" && portalTarget && createPortal(
-        <div className="fixed inset-0 bg-black/60 z-[100] flex items-end">
+        <div className="fixed inset-0 bg-black/60 z-100 flex items-end">
           <div className="bg-white w-full rounded-t-[40px] max-h-[90vh] flex flex-col">
             {/* Header */}
             <div className="px-6 pt-6 pb-4 flex items-center justify-between border-b border-gray-100 shrink-0">
@@ -869,7 +945,7 @@ export default function TeacherClassesScreen() {
 
       {/* ── Homework Modal ─────────────────────────────────────────────────── */}
       {action === "homework" && portalTarget && createPortal(
-        <div className="fixed inset-0 bg-black/60 z-[100] flex items-end">
+        <div className="fixed inset-0 bg-black/60 z-100 flex items-end">
           <div className="bg-white w-full rounded-t-[40px] p-8 max-h-[85vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <div>
@@ -901,6 +977,15 @@ export default function TeacherClassesScreen() {
                 rows={3}
                 className="w-full bg-gray-50 rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-indigo-200 resize-none"
               />
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Issue Date *</p>
+                <input
+                  type="date"
+                  value={hwForm.issueDate}
+                  onChange={e => setHwForm(p => ({ ...p, issueDate: e.target.value }))}
+                  className="w-full bg-gray-50 rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                />
+              </div>
               <div>
                 <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Due Date *</p>
                 <input
@@ -947,7 +1032,7 @@ export default function TeacherClassesScreen() {
 
       {/* ── Notification Modal ───────────────────────────────────────────────── */}
       {action === "notification" && portalTarget && createPortal(
-        <div className="fixed inset-0 bg-black/60 z-[100] flex items-end">
+        <div className="fixed inset-0 bg-black/60 z-100 flex items-end">
           <div className="bg-white w-full rounded-t-[40px] max-h-[90vh] flex flex-col">
             {/* Header */}
             <div className="px-6 pt-6 pb-4 flex items-center justify-between border-b border-gray-100 shrink-0">
@@ -1022,9 +1107,125 @@ export default function TeacherClassesScreen() {
         portalTarget
       )}
 
+      {/* ── Fee Reminder Modal ─────────────────────────────────────────────── */}
+      {messageAction === "fee_reminder" && portalTarget && selectedClass && createPortal(
+        <div className="fixed inset-0 bg-black/60 z-100 flex items-end">
+          <div className="bg-white w-full rounded-t-[40px] max-h-[90vh] flex flex-col">
+            <div className="px-6 pt-6 pb-4 flex items-center justify-between border-b border-gray-100 shrink-0">
+              <div>
+                <h3 className="text-xl font-black text-gray-900">Fee Reminder</h3>
+                <p className="text-[11px] text-gray-400 font-medium mt-0.5">
+                  {selectedClass.name} — {selectedClass.section}
+                </p>
+              </div>
+              <button
+                onClick={() => setMessageAction("none")}
+                className="w-10 h-10 bg-gray-50 rounded-2xl flex items-center justify-center active:scale-90 transition-transform"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Title *</p>
+                <input
+                  type="text"
+                  value={feeForm.title}
+                  onChange={(e) => setFeeForm((p) => ({ ...p, title: e.target.value }))}
+                  placeholder="e.g. Term 1 Fee Reminder"
+                  className="w-full bg-gray-50 rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                />
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Description *</p>
+                <textarea
+                  value={feeForm.description}
+                  onChange={(e) => setFeeForm((p) => ({ ...p, description: e.target.value }))}
+                  placeholder="Add fee details and instructions…"
+                  rows={4}
+                  className="w-full bg-gray-50 rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-emerald-200 resize-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Fee Amount (optional)</p>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    value={feeForm.feeAmount}
+                    onChange={(e) => setFeeForm((p) => ({ ...p, feeAmount: e.target.value }))}
+                    placeholder="e.g. 2500"
+                    className="w-full bg-gray-50 rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                  />
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Due Date (optional)</p>
+                  <input
+                    type="date"
+                    value={feeForm.dueDate}
+                    onChange={(e) => setFeeForm((p) => ({ ...p, dueDate: e.target.value }))}
+                    className="w-full bg-gray-50 rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Payment Note (optional)</p>
+                <input
+                  type="text"
+                  value={feeForm.paymentNote}
+                  onChange={(e) => setFeeForm((p) => ({ ...p, paymentNote: e.target.value }))}
+                  placeholder="e.g. Pay via office / UPI / bank transfer"
+                  className="w-full bg-gray-50 rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                />
+              </div>
+
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Send To</p>
+                <div className="flex gap-2">
+                  {(["all", "selected"] as const).map((a) => (
+                    <button
+                      key={a}
+                      type="button"
+                      onClick={() => setFeeForm((p) => ({ ...p, audience: a }))}
+                      className={`flex-1 rounded-2xl py-3 text-[10px] font-black uppercase tracking-widest transition-all ${
+                        feeForm.audience === a ? "bg-emerald-600 text-white" : "bg-gray-100 text-gray-500"
+                      }`}
+                    >
+                      {a === "all" ? "All Students" : "Select Students"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {feeForm.audience === "selected" && (
+                <MobileMultiSelect
+                  label="Students"
+                  placeholder="Select students…"
+                  value={selectedStudentIds}
+                  onChange={setSelectedStudentIds}
+                  options={classStudents.map((s) => ({ value: s.id, label: s.name, subtitle: s.username || "" }))}
+                  searchable
+                />
+              )}
+            </div>
+
+            <button
+              onClick={handleSendFeeReminder}
+              className="w-full mx-6 mb-6 max-w-xs bg-emerald-600 text-white py-3 px-6 rounded-2xl font-black text-sm shadow-lg shadow-emerald-200 active:scale-95 transition-transform self-center"
+            >
+              Send Fee Reminder
+            </button>
+          </div>
+        </div>,
+        portalTarget
+      )}
+
       {/* ── Add Student Modal ──────────────────────────────────────────────── */}
 {showAddStudent && portalTarget && selectedClass && createPortal(
-        <div className="fixed inset-0 bg-black/60 z-[100] flex items-end">
+        <div className="fixed inset-0 bg-black/60 z-100 flex items-end">
           <div className="bg-white w-full rounded-t-[40px] max-h-[90vh] flex flex-col">
             {/* Header */}
             <div className="px-6 pt-6 pb-4 flex items-center justify-between border-b border-gray-100 shrink-0">
@@ -1077,6 +1278,23 @@ export default function TeacherClassesScreen() {
                   onChange={e => setSData(p => ({ ...p, name: e.target.value }))}
                   className="w-full bg-gray-50 rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-indigo-200"
                 />
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Gender *</p>
+                <div className="flex gap-2">
+                  {(["male", "female"] as const).map((g) => (
+                    <button
+                      key={g}
+                      type="button"
+                      onClick={() => setSData((p) => ({ ...p, gender: g }))}
+                      className={`flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                        sData.gender === g ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-500"
+                      }`}
+                    >
+                      {g === "male" ? "Male" : "Female"}
+                    </button>
+                  ))}
+                </div>
               </div>
               <div>
                 <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Username *</p>

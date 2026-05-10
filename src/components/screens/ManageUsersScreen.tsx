@@ -24,7 +24,7 @@ export default function ManageUsersScreen() {
   const [showAddTeacher, setShowAddTeacher] = useState(false);
 
   const [sData, setSData] = useState({
-    name: "", classId: "", username: "", password: "",
+    name: "", classId: "", username: "", password: "", gender: "" as "" | "male" | "female",
   });
   const [tData, setTData] = useState({ name: "", email: "", password: "" });
 
@@ -64,12 +64,18 @@ export default function ManageUsersScreen() {
   };
 
   const handleAddStudent = async () => {
-    if (!sData.name || !sData.classId) {
-      showAlert("Missing Info", "Name and class are required.", "error");
+    if (!sData.name || !sData.classId || !sData.gender) {
+      showAlert("Missing Info", "Name, class, and gender are required.", "error");
       return;
     }
-    await addStudent({ name: sData.name, classId: sData.classId, username: sData.username, password: sData.password });
-    setSData({ name: "", classId: "", username: "", password: "" });
+    await addStudent({
+      name: sData.name,
+      classId: sData.classId,
+      username: sData.username,
+      gender: sData.gender,
+      password: sData.password,
+    });
+    setSData({ name: "", classId: "", username: "", password: "", gender: "" });
     setShowAddStudent(false);
   };
 
@@ -213,6 +219,16 @@ export default function ManageUsersScreen() {
           <div className="space-y-3">
             <Field placeholder="Full Name *" value={sData.name} onChange={v => setSData(p => ({ ...p, name: v }))} />
             <MobileSelect
+              placeholder="Gender *"
+              value={sData.gender}
+              onChange={(v) => setSData((p) => ({ ...p, gender: v as any }))}
+              options={[
+                { value: "male", label: "Male" },
+                { value: "female", label: "Female" },
+              ]}
+              searchable={false}
+            />
+            <MobileSelect
               placeholder="Select class *"
               value={sData.classId}
               onChange={(v) => setSData((p) => ({ ...p, classId: v }))}
@@ -261,7 +277,7 @@ function BottomSheet({
   title, children, onClose,
 }: { title: string; children: React.ReactNode; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 bg-black/60 z-[100] flex items-end">
+    <div className="fixed inset-0 bg-black/60 z-100 flex items-end">
       <div className="bg-white w-full rounded-t-[40px] p-8 max-h-[85vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-xl font-black text-gray-900">{title}</h3>

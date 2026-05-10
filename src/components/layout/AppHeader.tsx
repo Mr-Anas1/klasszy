@@ -10,7 +10,7 @@ const TITLES: Record<string, string> = {
   attendance:           "Attendance",
   diary:                "My Tasks",
   diary_history:        "Task History",
-  analysis:             "Analysis",
+  analysis:             "School Insights",
   remarks_history:      "Remarks",
   profile:              "Profile",
   circulars:            "Circulars",
@@ -18,6 +18,9 @@ const TITLES: Record<string, string> = {
   notifications:        "Notifications",
   homework_detail:      "Homework",
   homework_history:     "Homework History",
+  exams:                "Exams",
+  exam_detail:          "Exam",
+  fee_reminders:        "Fee Reminders",
   student_detail:       "Student",
   teacher_detail:       "Teacher",
   // Admin
@@ -26,11 +29,12 @@ const TITLES: Record<string, string> = {
   manage_teachers:      "Teachers",
   manage_classes:       "Classes",
   admin_announcements:  "Announcements",
-  admin_activities:     "Activities",
+  admin_activities:     "Leave Management",
   // Teacher
   teacher_classes:      "My Classes",
-  teacher_activities:   "Activities",
+  teacher_activities:   "Leave Management",
   students:             "My Students",
+  leave_management:     "Leave Management",
 };
 
 export default function AppHeader() {

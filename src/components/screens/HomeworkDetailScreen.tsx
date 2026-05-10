@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { ArrowLeft, Calendar, BookOpen, Clock, User, CheckCircle2, AlertCircle } from "lucide-react";
 import { useApp } from "@/context/AppContext";
+import { getLocalISODate, isExpiredAfter } from "@/lib/date-window";
 
 export default function HomeworkDetailScreen() {
   const { selectedHomework, setSelectedHomework, setActiveTab, homeworkStatus, toggleDiaryEntry, user } = useApp();
@@ -27,8 +28,12 @@ export default function HomeworkDetailScreen() {
 
   const currentStatus = homeworkStatus[selectedHomework.id] || "Pending";
   const isCompleted = currentStatus === "Completed";
+  const today = getLocalISODate(new Date());
+  const isExpired = isExpiredAfter(today, selectedHomework.dueDate);
+  const effectiveStatus = isExpired ? "Expired" : currentStatus;
 
   const handleStatusToggle = async () => {
+    if (isExpired) return;
     setIsCompleting(true);
     try {
       await toggleDiaryEntry(selectedHomework.id);
@@ -50,6 +55,7 @@ export default function HomeworkDetailScreen() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
+      case "Expired": return "bg-rose-50 text-rose-600 border-rose-100";
       case "Completed": return "bg-emerald-50 text-emerald-600 border-emerald-100";
       case "Pending": return "bg-amber-50 text-amber-600 border-amber-100";
       default: return "bg-gray-50 text-gray-600 border-gray-100";
@@ -76,8 +82,8 @@ export default function HomeworkDetailScreen() {
           <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${getPriorityColor(selectedHomework.priority)}`}>
             {selectedHomework.priority} Priority
           </span>
-          <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${getStatusColor(currentStatus)}`}>
-            {currentStatus}
+          <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${getStatusColor(effectiveStatus)}`}>
+            {effectiveStatus}
           </span>
         </div>
 
@@ -93,6 +99,14 @@ export default function HomeworkDetailScreen() {
             <div className="flex-1">
               <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Due Date</p>
               <p className="text-sm font-bold text-gray-900">{selectedHomework.dueDate}</p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3">
+            <Calendar className="w-5 h-5 text-gray-400 mt-1" />
+            <div className="flex-1">
+              <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Issue Date</p>
+              <p className="text-sm font-bold text-gray-900">{(selectedHomework as any).issueDate || selectedHomework.dueDate}</p>
             </div>
           </div>
           
@@ -126,15 +140,17 @@ export default function HomeworkDetailScreen() {
         {/* Status Toggle Button */}
         <button
           onClick={handleStatusToggle}
-          disabled={isCompleting}
+          disabled={isCompleting || isExpired}
           className={`w-full py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all active:scale-95 shadow-lg ${
             isCompleted
               ? "bg-gray-50 text-gray-400 border-2 border-gray-200"
               : "bg-emerald-600 text-white shadow-emerald-100"
-          } ${isCompleting ? "opacity-50 cursor-not-allowed" : ""}`}
+          } ${isCompleting || isExpired ? "opacity-50 cursor-not-allowed" : ""}`}
         >
           {isCompleting ? (
             "Updating..."
+          ) : isExpired ? (
+            "Expired"
           ) : isCompleted ? (
             "Mark as Pending"
           ) : (

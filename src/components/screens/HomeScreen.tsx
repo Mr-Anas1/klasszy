@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Calendar, FileText, Bell, MessageSquare, Send, BellRing, CalendarClock } from "lucide-react";
+import { Calendar, FileText, Bell, MessageSquare, Send, BellRing, CalendarClock, CalendarCheck, Wallet } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { isNavItemEnabled } from "@/lib/feature-registry";
 import { computeStudentAttendanceStats } from "@/lib/attendance-utils";
@@ -10,13 +10,12 @@ export default function HomeScreen() {
   const {
     user, circulars, homework, attendance,
     setActiveTab, students, remarks, notifications,
-    applyLeave, showAlert, leaveApplications, markNotificationsAsRead,
+    showAlert, leaveApplications, markNotificationsAsRead,
     school,
     classes,
   } = useApp();
 
-  const [showLeaveForm, setShowLeaveForm] = React.useState(false);
-  const [leaveForm, setLeaveForm] = React.useState({ fromDate: "", toDate: "", reason: "" });
+  // Leave apply is handled in the dedicated Leave Management screen
 
   const dateStr = React.useMemo(
     () => new Date().toLocaleDateString("en-IN", {
@@ -46,27 +45,7 @@ export default function HomeScreen() {
   );
   const attendancePct = attStats.ratePct;
 
-  // Handle leave application
-  const handleApplyLeave = async () => {
-    if (!currentStudent) {
-      showAlert("Error", "No student linked to this account.", "error");
-      return;
-    }
-    if (!leaveForm.fromDate || !leaveForm.toDate || !leaveForm.reason.trim()) {
-      showAlert("Missing Info", "Please fill From Date, To Date, and Reason.", "error");
-      return;
-    }
-
-    await applyLeave({
-      studentId: currentStudent.id,
-      fromDate: leaveForm.fromDate,
-      toDate: leaveForm.toDate,
-      reason: leaveForm.reason
-    });
-    setLeaveForm({ fromDate: "", toDate: "", reason: "" });
-    setShowLeaveForm(false);
-    showAlert("Submitted", "Leave application submitted to teacher.", "success");
-  };
+  // Leave apply is handled in the dedicated Leave Management screen
 
   // Homework count — scoped to student's class
   const classHomework = currentStudent
@@ -122,11 +101,11 @@ export default function HomeScreen() {
       bg: "bg-[#9B72CF]",     // purple
     },
     {
-      id: "apply_leave",
+      id: "leave_management",
       Icon: Send,
-      title: "Apply Leave",
-      stat: "+",
-      meta: "quick apply",
+      title: "Leave Management",
+      stat: "Open",
+      meta: "apply & track",
       bg: "bg-[#10B981]",     // emerald
     },
     {
@@ -155,6 +134,22 @@ export default function HomeScreen() {
       stat: "Open",
       meta: "class schedule",
       bg: "bg-[#0EA5E9]",
+    },
+    {
+      id: "exams",
+      Icon: CalendarCheck,
+      title: "Exams",
+      stat: "View",
+      meta: "schedules",
+      bg: "bg-[#6366F1]",
+    },
+    {
+      id: "fee_reminders",
+      Icon: Wallet,
+      title: "Fee Reminders",
+      stat: String(studentNotifs.filter((n) => n.type === "fee").length),
+      meta: "payment notices",
+      bg: "bg-[#059669]",
     },
   ];
 
@@ -187,9 +182,7 @@ export default function HomeScreen() {
           <button
             key={card.id}
             onClick={() => {
-              if (card.id === "apply_leave") {
-                setShowLeaveForm(true);
-              } else if (card.id === "notifications") {
+              if (card.id === "notifications") {
                 // Mark all notifications as read when opening notifications screen
                 markNotificationsAsRead();
                 setActiveTab(card.id);
@@ -257,60 +250,6 @@ export default function HomeScreen() {
         </div>
       )}
 
-      {/* Leave Application Modal */}
-      {showLeaveForm && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center px-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowLeaveForm(false)} />
-          <div className="relative w-full max-w-md bg-white rounded-[40px] p-8 animate-scale-in shadow-2xl">
-            <h3 className="text-xl font-black text-gray-900 mb-6 text-center">Apply for Leave</h3>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1 ml-2 block">From</label>
-                  <input
-                    value={leaveForm.fromDate}
-                    onChange={(e) => setLeaveForm({ ...leaveForm, fromDate: e.target.value })}
-                    placeholder="YYYY-MM-DD"
-                    className="w-full bg-gray-50 border-2 border-transparent focus:border-indigo-100 rounded-2xl px-4 py-3 text-sm font-bold focus:outline-none transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1 ml-2 block">To</label>
-                  <input
-                    value={leaveForm.toDate}
-                    onChange={(e) => setLeaveForm({ ...leaveForm, toDate: e.target.value })}
-                    placeholder="YYYY-MM-DD"
-                    className="w-full bg-gray-50 border-2 border-transparent focus:border-indigo-100 rounded-2xl px-4 py-3 text-sm font-bold focus:outline-none transition-all"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1 ml-2 block">Reason</label>
-                <textarea
-                  value={leaveForm.reason}
-                  onChange={(e) => setLeaveForm({ ...leaveForm, reason: e.target.value })}
-                  placeholder="Reason for leave..."
-                  className="w-full bg-gray-50 border-2 border-transparent focus:border-indigo-100 rounded-2xl px-4 py-3 text-sm font-bold focus:outline-none transition-all min-h-[90px] resize-none"
-                />
-              </div>
-            </div>
-            <div className="mt-8 flex gap-3">
-              <button 
-                onClick={() => setShowLeaveForm(false)} 
-                className="flex-1 bg-gray-50 text-gray-400 font-black py-4 rounded-2xl text-xs uppercase tracking-widest"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={handleApplyLeave}
-                className="flex-1 bg-emerald-600 text-white font-black py-4 rounded-2xl text-xs uppercase tracking-widest shadow-lg shadow-emerald-100"
-              >
-                Submit
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

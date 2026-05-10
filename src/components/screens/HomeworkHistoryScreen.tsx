@@ -94,6 +94,13 @@ export default function HomeworkHistoryScreen() {
             
             <div className="flex items-center gap-6 mt-6 pt-6 border-t border-gray-50">
               <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-gray-300" />
+                <div migrant-className="flex flex-col">
+                  <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">Issue Date</p>
+                  <p className="text-xs font-bold text-gray-900">{(h as any).issueDate || h.dueDate}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-gray-300" />
                 <div migrant-className="flex flex-col">
                   <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">Due Date</p>

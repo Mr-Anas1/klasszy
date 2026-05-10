@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { BookOpen, Bell, Activity } from "lucide-react";
+import { BookOpen, Bell, Activity, CalendarCheck } from "lucide-react";
 import { useApp, UserProfile } from "@/context/AppContext";
 import { isNavItemEnabled } from "@/lib/feature-registry";
 
@@ -42,12 +42,22 @@ export default function TeacherHomeScreen() {
     {
       id: "teacher_activities",
       Icon: Activity,
-      title: "Activities",
+      title: "Leave Management",
       subtitle: `${pendingLeaves} pending leaves`,
       bg: "bg-rose-500",
       shadow: "shadow-rose-200",
       wide: false,
       badge: pendingLeaves > 0 ? pendingLeaves : null,
+    },
+    {
+      id: "exams",
+      Icon: CalendarCheck,
+      title: "Exams",
+      subtitle: "Publish exam schedules",
+      bg: "bg-indigo-600",
+      shadow: "shadow-indigo-200",
+      wide: false,
+      badge: null as number | null,
     },
   ];
 

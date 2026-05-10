@@ -46,6 +46,11 @@ import AnalysisScreen from "@/components/screens/AnalysisScreen";
 import RemarksScreen from "@/components/screens/RemarksScreen";
 import HomeworkDetailScreen from "@/components/screens/HomeworkDetailScreen";
 import TimetableScreen from "@/components/screens/TimetableScreen";
+import LeaveManagementScreen from "@/components/screens/LeaveManagementScreen";
+import ExamsScreen from "@/components/screens/ExamsScreen";
+import ExamDetailScreen from "@/components/screens/ExamDetailScreen";
+import SchoolInsightsScreen from "@/components/screens/SchoolInsightsScreen";
+import FeeRemindersScreen from "@/components/screens/FeeRemindersScreen";
 
 // ─── Sidebar nav definitions ───────────────────────────────────────────────
 
@@ -63,7 +68,8 @@ const ADMIN_NAV: NavItem[] = [
   { id: "manage_teachers",     Icon: BookOpen,        label: "Teachers" },
   { id: "manage_classes",      Icon: School,          label: "Classes" },
   { id: "admin_announcements", Icon: Megaphone,       label: "Announcements" },
-  { id: "admin_activities",    Icon: Activity,        label: "Activities" },
+  { id: "admin_activities",    Icon: Activity,        label: "Leave Management" },
+  { id: "exams",               Icon: CalendarClock,   label: "Exams" },
   { id: "circulars",           Icon: Newspaper,       label: "Circulars" },
   { id: "profile",             Icon: User,            label: "Profile" },
 ];
@@ -72,7 +78,8 @@ const TEACHER_NAV: NavItem[] = [
   { id: "home",               Icon: LayoutDashboard, label: "Dashboard" },
   { id: "teacher_classes",    Icon: School,          label: "My Classes" },
   { id: "students",           Icon: Users,           label: "Students" },
-  { id: "teacher_activities", Icon: ClipboardList,   label: "Activities" },
+  { id: "teacher_activities", Icon: ClipboardList,   label: "Leave Management" },
+  { id: "exams",              Icon: CalendarClock,   label: "Exams" },
   { id: "circulars",          Icon: Newspaper,       label: "Circulars" },
   { id: "profile",            Icon: User,            label: "Profile" },
 ];
@@ -245,7 +252,10 @@ export default function AppShell() {
         case "manage_teachers":      return <ManageTeachersScreen />;
         case "manage_classes":       return <ManageClassesScreen />;
         case "admin_announcements":  return <AdminAnnouncementsScreen />;
-        case "admin_activities":     return <AdminActivitiesScreen />;
+        case "admin_activities":     return <LeaveManagementScreen />;
+        case "exams":                return <ExamsScreen />;
+        case "exam_detail":          return <ExamDetailScreen />;
+        case "analysis":             return <SchoolInsightsScreen />;
         case "circulars":            return <CircularsScreen />;
         case "view_circular":        return <CircularDetailScreen />;
         case "homework_history":     return <HomeworkHistoryScreen />;
@@ -261,8 +271,10 @@ export default function AppShell() {
     if (userRole === "teacher") {
       switch (activeTab) {
         case "teacher_classes":      return <TeacherClassesScreen />;
-        case "teacher_activities":   return <TeacherActivitiesScreen />;
+        case "teacher_activities":   return <LeaveManagementScreen />;
         case "students":             return <TeacherStudentsScreen />;
+        case "exams":                return <ExamsScreen />;
+        case "exam_detail":          return <ExamDetailScreen />;
         case "circulars":            return <CircularsScreen />;
         case "view_circular":        return <CircularDetailScreen />;
         case "homework_history":     return <HomeworkHistoryScreen />;
@@ -281,6 +293,10 @@ export default function AppShell() {
         case "attendance":           return <AttendanceScreen />;
         case "diary":                return <DiaryScreen />;
         case "diary_history":        return <DiaryHistoryScreen />;
+        case "leave_management":     return <LeaveManagementScreen />;
+        case "exams":                return <ExamsScreen />;
+        case "exam_detail":          return <ExamDetailScreen />;
+        case "fee_reminders":        return <FeeRemindersScreen />;
         case "circulars":            return <CircularsScreen />;
         case "view_circular":        return <CircularDetailScreen />;
         case "homework_history":     return <HomeworkHistoryScreen />;
@@ -299,6 +315,10 @@ export default function AppShell() {
       case "attendance":             return <AttendanceScreen />;
       case "diary":                  return <DiaryScreen />;
       case "diary_history":          return <DiaryHistoryScreen />;
+      case "leave_management":       return <LeaveManagementScreen />;
+      case "exams":                  return <ExamsScreen />;
+      case "exam_detail":            return <ExamDetailScreen />;
+      case "fee_reminders":          return <FeeRemindersScreen />;
       case "circulars":              return <CircularsScreen />;
       case "view_circular":          return <CircularDetailScreen />;
       case "analysis":               return <AnalysisScreen />;

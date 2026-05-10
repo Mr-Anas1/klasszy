@@ -32,6 +32,7 @@ import { Capacitor } from "@capacitor/core";
 import { db, auth } from "@/lib/firebase";
 import { toast } from "@/lib/toast-bus";
 import { appConfig } from "@/configs/appConfig";
+import { getLocalISODate, isExpiredAfter, isISODateOnOrBefore } from "@/lib/date-window";
 
 // Secondary Auth instance to onboard users without logging out the admin
 const firebaseConfig = {
@@ -90,6 +91,7 @@ export interface Student {
 export interface StudentPersonalDetails {
   id: string;
   studentId: string;
+  gender: "male" | "female";
   fatherName: string;
   motherName: string;
   bloodGroup: string;
@@ -151,6 +153,12 @@ export interface NotificationItem {
   type: "fee" | "general" | "instruction";
   targetType: "student" | "class";
   targetId: string;
+  // Fee reminder metadata (only for type === "fee")
+  feeAmount?: number;
+  dueDate?: string; // YYYY-MM-DD
+  paymentNote?: string;
+  audienceScope?: "all" | "selected";
+  targetStudentIds?: string[];
   createdById: string;
   createdByName: string;
   createdByRole: UserRole;
@@ -201,6 +209,18 @@ export interface ClassTimetable {
   updatedAt: Timestamp;
 }
 
+export interface Exam {
+  id: string;
+  schoolId: string;
+  name: string;
+  fromDate: string; // YYYY-MM-DD
+  toDate: string; // YYYY-MM-DD
+  attachmentUrl?: string;
+  attachmentType?: "image" | "pdf";
+  createdBy: string;
+  createdAt: Timestamp;
+}
+
 export interface Homework {
   id: string;
   schoolId: string;
@@ -208,6 +228,7 @@ export interface Homework {
   className: string;
   subject: string;
   task: string;
+  issueDate: string; // YYYY-MM-DD
   dueDate: string;
   priority: "High" | "Medium" | "Low";
   color: string;
@@ -234,6 +255,7 @@ export interface DiaryEntry {
   schoolId: string;
   subject: string;
   task: string;
+  issueDate: string; // YYYY-MM-DD
   dueDate: string;
   priority: "High" | "Medium" | "Low";
   status: "Pending" | "Completed";
@@ -265,11 +287,13 @@ interface AppContextType {
   usersList: UserProfile[];
   circulars: Circular[];
   timetables: ClassTimetable[];
+  exams: Exam[];
   skillStats: SkillStat[];
   studentDetails: StudentPersonalDetails[];
   remarks: Remark[];
   leaveApplications: LeaveApplication[];
   notifications: NotificationItem[];
+  selectedExam: Exam | null;
   selectedStudent: Student | null;
   selectedTeacher: UserProfile | null;
   selectedHomework: Homework | null;
@@ -284,7 +308,8 @@ interface AppContextType {
   setSelectedStudent: (student: Student | null) => void;
   setSelectedTeacher: (teacher: UserProfile | null) => void;
   setSelectedHomework: (homework: Homework | null) => void;
-  addStudent: (data: { name: string; classId: string; username: string; password?: string }) => Promise<void>;
+  setSelectedExam: (exam: Exam | null) => void;
+  addStudent: (data: { name: string; classId: string; username: string; gender: "male" | "female"; password?: string }) => Promise<void>;
   addClass: (c: Omit<ClassRoom, "id" | "schoolId">) => Promise<void>;
   sendAnnouncement: (title: string, message: string) => Promise<void>;
   assignHomework: (data: Omit<Homework, "id" | "schoolId" | "createdBy" | "createdAt">) => Promise<void>;
@@ -310,6 +335,8 @@ interface AppContextType {
   applyLeave: (data: { studentId: string; fromDate: string; toDate: string; reason: string }) => Promise<void>;
   teacherReviewLeave: (leaveId: string, data: { decision: "approve" | "reject"; remark?: string }) => Promise<void>;
   adminReviewLeave: (leaveId: string, data: { decision: "approve" | "reject"; remark?: string }) => Promise<void>;
+  createExam: (data: { name: string; fromDate: string; toDate: string; attachmentUrl?: string; attachmentType?: "image" | "pdf" }) => Promise<void>;
+  deleteExam: (examId: string) => Promise<void>;
   sendNotification: (data: {
     title: string;
     message: string;
@@ -365,7 +392,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [circulars, setCirculars] = useState<Circular[]>([]);
   const [timetables, setTimetables] = useState<ClassTimetable[]>([]);
+  const [exams, setExams] = useState<Exam[]>([]);
   const [selectedCircular, setSelectedCircular] = useState<Circular | null>(null);
+  const [selectedExam, setSelectedExam] = useState<Exam | null>(null);
   const [students, setStudents] = useState<Student[]>([]);
   const [classes, setClasses] = useState<ClassRoom[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
@@ -543,6 +572,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setTimetables(snap.docs.map((d) => ({ id: d.id, ...d.data() } as ClassTimetable)));
     });
 
+    const unsubExams = onSnapshot(query(collection(db, "exams"), ...qOptions), (snap) => {
+      const sorted = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() } as Exam))
+        .sort((a, b) => b.createdAt.seconds - a.createdAt.seconds);
+      setExams(sorted);
+    });
+
     const unsubStudentDetails = onSnapshot(query(collection(db, "studentDetails"), ...qOptions), (snap) => {
       setStudentDetails(snap.docs.map(d => ({ id: d.id, ...d.data() } as StudentPersonalDetails)));
     });
@@ -569,7 +605,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => {
-      unsubStudents(); unsubClasses(); unsubAnnouncements(); unsubHomework(); unsubAttendance(); unsubStatus(); unsubUsers(); unsubCirculars(); unsubTimetables(); unsubStudentDetails(); unsubRemarks(); unsubLeaveApplications(); unsubNotifications();
+      unsubStudents(); unsubClasses(); unsubAnnouncements(); unsubHomework(); unsubAttendance(); unsubStatus(); unsubUsers(); unsubCirculars(); unsubTimetables(); unsubExams(); unsubStudentDetails(); unsubRemarks(); unsubLeaveApplications(); unsubNotifications();
     };
   }, [isLoggedIn, school, user]);
 
@@ -580,30 +616,63 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    const today = getLocalISODate();
+
     let targetClassId = "";
     if (userRole === "parent") {
       const student = students.find(s => s.parentId === user.id);
       targetClassId = student?.classId || "";
     } else if (userRole === "teacher") {
       // Teachers see all homework assigned in their classes
-      setDiaryEntries(homework.filter(h => user.classIds?.includes(h.classId)).map(h => ({
-        ...h,
-        status: "Pending" // Teachers don't have a personal status
-      } as DiaryEntry)));
+      setDiaryEntries(
+        homework
+          .filter((h) => user.classIds?.includes(h.classId))
+          .filter((h) => isISODateOnOrBefore((h as any).issueDate || h.dueDate, today))
+          .map(
+            (h) =>
+              ({
+                ...h,
+                issueDate: (h as any).issueDate || h.dueDate,
+                status: isExpiredAfter(today, h.dueDate) ? "Completed" : "Pending",
+              } as DiaryEntry)
+          )
+      );
       return;
     }
 
     if (targetClassId) {
       const entries = homework
-        .filter(h => h.classId === targetClassId)
-        .map(h => ({
-          ...h,
-          status: homeworkStatus[h.id] || "Pending"
-        } as DiaryEntry));
+        .filter((h) => h.classId === targetClassId)
+        .filter((h) => isISODateOnOrBefore((h as any).issueDate || h.dueDate, today))
+        .map(
+          (h) =>
+            ({
+              ...h,
+              issueDate: (h as any).issueDate || h.dueDate,
+              status:
+                homeworkStatus[h.id] === "Completed" || isExpiredAfter(today, h.dueDate)
+                  ? "Completed"
+                  : "Pending",
+            } as DiaryEntry)
+        );
       setDiaryEntries(entries);
     } else if (homework.length > 0 && userRole === "parent") {
        // Fallback for demo if students list is still loading
-       setDiaryEntries(homework.map(h => ({ ...h, status: homeworkStatus[h.id] || "Pending" } as DiaryEntry)));
+       setDiaryEntries(
+         homework
+           .filter((h) => isISODateOnOrBefore((h as any).issueDate || h.dueDate, today))
+           .map(
+             (h) =>
+               ({
+                 ...h,
+                 issueDate: (h as any).issueDate || h.dueDate,
+                 status:
+                   homeworkStatus[h.id] === "Completed" || isExpiredAfter(today, h.dueDate)
+                     ? "Completed"
+                     : "Pending",
+               } as DiaryEntry)
+           )
+       );
     }
   }, [homework, homeworkStatus, user, userRole, students]);
 
@@ -693,13 +762,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // --- CRUD FUNCTIONS ---
 
-  const addStudent = async (data: { name: string; classId: string; username: string; password?: string }) => {
+  const addStudent = async (data: { name: string; classId: string; username: string; gender: "male" | "female"; password?: string }) => {
     if (!school) return;
     const pass = data.password || "password123";
     
     if (pass.length < 6) {
       showAlert("Weak Password", "Password must be at least 6 characters.", "error");
       throw new Error("Weak password");
+    }
+    if (!data.gender) {
+      showAlert("Missing Info", "Gender is required.", "error");
+      throw new Error("Missing gender");
     }
 
     try {
@@ -721,7 +794,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       });
 
       // 3. Create Student Doc
-      await addDoc(collection(db, "students"), {
+      const studentRef = await addDoc(collection(db, "students"), {
         schoolId: school.id,
         classId: data.classId,
         name: data.name,
@@ -729,6 +802,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         username: data.username,
         password: pass,
         createdAt: Timestamp.now()
+      });
+
+      // 4. Create minimal personal details with required gender
+      await addDoc(collection(db, "studentDetails"), {
+        studentId: studentRef.id,
+        schoolId: school.id,
+        gender: data.gender,
+        fatherName: "",
+        motherName: "",
+        bloodGroup: "",
+        dateOfBirth: "",
+        parentPhone: "",
+        address: "",
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
       });
 
       toast.success(
@@ -917,6 +1005,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await deleteDoc(doc(db, "circulars", id));
   };
 
+  const createExam = async (data: { name: string; fromDate: string; toDate: string; attachmentUrl?: string; attachmentType?: "image" | "pdf" }) => {
+    if (!school || !user) return;
+    if (!data.name.trim() || !data.fromDate || !data.toDate) return;
+    await addDoc(collection(db, "exams"), {
+      schoolId: school.id,
+      name: data.name.trim(),
+      fromDate: data.fromDate,
+      toDate: data.toDate,
+      attachmentUrl: data.attachmentUrl,
+      attachmentType: data.attachmentType,
+      createdBy: user.id,
+      createdAt: Timestamp.now(),
+    });
+    toast.success("Exam published.", "Exam created");
+  };
+
+  const deleteExam = async (examId: string) => {
+    if (!school || !user) return;
+    await deleteDoc(doc(db, "exams", examId));
+    toast.success("Exam deleted.", "Removed");
+  };
+
   const updateStudentPersonalDetails = async (studentId: string, data: Omit<StudentPersonalDetails, "id" | "studentId" | "createdAt" | "updatedAt">) => {
     if (!school) return;
     
@@ -1025,6 +1135,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     type: "fee" | "general" | "instruction";
     targetType: "student" | "class";
     targetId: string;
+    feeAmount?: number;
+    dueDate?: string;
+    paymentNote?: string;
+    audienceScope?: "all" | "selected";
+    targetStudentIds?: string[];
   }) => {
     if (!school || !user) return;
     await addDoc(collection(db, "notifications"), {
@@ -1093,8 +1208,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         loading,
         circulars,
         timetables,
+        exams,
         selectedCircular,
         setSelectedCircular,
+        selectedExam,
+        setSelectedExam,
         students,
         classes,
         announcements,
@@ -1134,6 +1252,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         deleteCircular,
         upsertClassTimetable,
         deleteClassTimetable,
+        createExam,
+        deleteExam,
         sendRemark,
         getStudentRemarks,
         applyLeave,

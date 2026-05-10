@@ -4,6 +4,7 @@ import React, { useMemo, useState } from "react";
 import { Calendar, CheckCircle2, Clock } from "lucide-react";
 import { Timestamp } from "firebase/firestore";
 import { useApp } from "@/context/AppContext";
+import { getLocalISODate, isExpiredAfter } from "@/lib/date-window";
 
 const SUBJECTS = ["All", "Mathematics", "English", "Science", "History"];
 
@@ -20,13 +21,6 @@ const getContrastTheme = (hexcolor?: string) => {
 
   const yiq = (r * 299 + g * 587 + b * 114) / 1000;
   return yiq >= 128 ? "dark" : "light";
-};
-
-const getLocalISODate = (d: Date) => {
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
 };
 
 export default function DiaryHistoryScreen() {
@@ -92,13 +86,15 @@ export default function DiaryHistoryScreen() {
 
             <div className="space-y-4">
               {items.map((work, i) => {
+                const isExpired = isExpiredAfter(today, work.dueDate);
                 const homeworkData = {
                   id: work.id,
                   subject: work.subject,
                   task: work.task,
+                  issueDate: (work as any).issueDate || work.dueDate,
                   dueDate: work.dueDate,
                   priority: work.priority,
-                  classId: work.schoolId,
+                  classId: "",
                   className: "Class",
                   createdBy: "teacher",
                   createdAt: Timestamp.now(),
@@ -151,12 +147,16 @@ export default function DiaryHistoryScreen() {
                       </div>
 
                       <div className={`flex items-center gap-1.5 backdrop-blur-md border px-3 py-1.5 rounded-xl ${glassBg} ${textMain}`}>
-                        {work.status === "Completed" ? (
+                        {isExpired ? (
+                          <Clock className="w-3.5 h-3.5 opacity-80" />
+                        ) : work.status === "Completed" ? (
                           <CheckCircle2 className="w-3.5 h-3.5" />
                         ) : (
                           <Clock className="w-3.5 h-3.5 opacity-80" />
                         )}
-                        <span className="text-[10px] font-bold uppercase tracking-widest">{work.status}</span>
+                        <span className="text-[10px] font-bold uppercase tracking-widest">
+                          {isExpired ? "Expired" : work.status}
+                        </span>
                       </div>
                     </div>
 
@@ -178,14 +178,15 @@ export default function DiaryHistoryScreen() {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          toggleDiaryEntry(work.id);
+                          if (!isExpired) toggleDiaryEntry(work.id);
                         }}
+                        disabled={isExpired}
                         className={`px-5 py-2.5 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all active:scale-90 shadow-sm flex items-center gap-1.5 border backdrop-blur-md ${
-                          work.status === "Completed" ? secondaryBtnBg : primaryBtnBg
+                          isExpired ? "bg-white/40 text-gray-600 border-white/30 cursor-not-allowed" : work.status === "Completed" ? secondaryBtnBg : primaryBtnBg
                         }`}
                       >
-                        {work.status === "Completed" ? "Revert" : "Mark Done"}
-                        {work.status !== "Completed" && <CheckCircle2 className="w-3.5 h-3.5" />}
+                        {isExpired ? "Expired" : work.status === "Completed" ? "Revert" : "Mark Done"}
+                        {!isExpired && work.status !== "Completed" && <CheckCircle2 className="w-3.5 h-3.5" />}
                       </button>
                     </div>
                   </div>
