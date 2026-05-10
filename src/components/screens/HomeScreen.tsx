@@ -1,9 +1,10 @@
 "use client";
 
 import React from "react";
-import { Calendar, FileText, Bell, MessageSquare, Send, BellRing } from "lucide-react";
+import { Calendar, FileText, Bell, MessageSquare, Send, BellRing, CalendarClock } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { isNavItemEnabled } from "@/lib/feature-registry";
+import { computeStudentAttendanceStats } from "@/lib/attendance-utils";
 
 export default function HomeScreen() {
   const {
@@ -11,6 +12,7 @@ export default function HomeScreen() {
     setActiveTab, students, remarks, notifications,
     applyLeave, showAlert, leaveApplications, markNotificationsAsRead,
     school,
+    classes,
   } = useApp();
 
   const [showLeaveForm, setShowLeaveForm] = React.useState(false);
@@ -27,33 +29,22 @@ export default function HomeScreen() {
   const myStudents = students.filter(s => s.parentId === user?.id);
   const currentStudent = myStudents[0];
 
-  // Attendance percentage: use same logic as AttendanceScreen
-  const studentHistory = attendance.map(doc => {
-    const myRecord = doc.records.find(r => r.studentId === currentStudent?.id);
-    return {
-      date: doc.date,
-      status: myRecord?.status || "absent" // Default to absent if not marked
-    };
-  });
-  
-  const presentCount = studentHistory.filter(r => r.status === "present").length;
-  const attendancePct = studentHistory.length > 0
-    ? Math.round((presentCount / studentHistory.length) * 100)
-    : 0;
-  
-  // Debug: Log attendance calculation
-  console.log('HomeScreen Attendance Debug:', {
-    user: user?.name,
-    userRole: user?.role,
-    myStudentsCount: myStudents.length,
-    currentStudent: currentStudent?.name,
-    currentStudentId: currentStudent?.id,
-    totalAttendanceRecords: attendance.length,
-    studentHistory: studentHistory.length,
-    presentCount,
-    attendancePct,
-    hasAttendanceData: attendance.length > 0
-  });
+  const classLabel = React.useMemo(() => {
+    if (!currentStudent?.classId) return null;
+    const cls = classes.find((c) => c.id === currentStudent.classId);
+    return cls ? `Class ${cls.name} · Section ${cls.section}` : null;
+  }, [classes, currentStudent?.classId]);
+
+  const attStats = React.useMemo(
+    () =>
+      computeStudentAttendanceStats(
+        currentStudent?.id,
+        currentStudent?.classId,
+        attendance
+      ),
+    [attendance, currentStudent?.classId, currentStudent?.id]
+  );
+  const attendancePct = attStats.ratePct;
 
   // Handle leave application
   const handleApplyLeave = async () => {
@@ -102,8 +93,8 @@ export default function HomeScreen() {
       id: "attendance",
       Icon: Calendar,
       title: "Attendance",
-      stat: studentHistory.length > 0 ? `${attendancePct}%` : "--",
-      meta: studentHistory.length > 0 ? "of days present" : "no records",
+      stat: attStats.totalMarked > 0 ? `${attendancePct}%` : "--",
+      meta: attStats.totalMarked > 0 ? "attendance rate" : "no records",
       bg: "bg-[#5B6EF5]",     // indigo-blue
     },
     {
@@ -157,6 +148,14 @@ export default function HomeScreen() {
         )
       ).length > 0,
     },
+    {
+      id: "timetable",
+      Icon: CalendarClock,
+      title: "Timetable",
+      stat: "Open",
+      meta: "class schedule",
+      bg: "bg-[#0EA5E9]",
+    },
   ];
 
   return (
@@ -170,6 +169,11 @@ export default function HomeScreen() {
         <p className="text-sm text-gray-400 font-medium mt-0.5">
           {currentStudent ? `Viewing: ${currentStudent.name}` : "What would you like to check?"}
         </p>
+        {classLabel && (
+          <div className="mt-3 inline-flex items-center rounded-2xl bg-indigo-50 px-4 py-2 text-[11px] font-black uppercase tracking-widest text-indigo-700 ring-1 ring-indigo-100">
+            {classLabel}
+          </div>
+        )}
       </div>
 
       {/* Section label */}
@@ -205,8 +209,10 @@ export default function HomeScreen() {
             </div>
 
             {/* Stats + Label */}
-            <div>
-              <p className="text-3xl font-black leading-none">{card.stat}</p>
+            <div className="min-w-0">
+              <p className="text-2xl font-black leading-none tabular-nums sm:text-3xl truncate max-w-full">
+                {card.stat}
+              </p>
               <h3 className="text-sm font-black mt-1 leading-tight">{card.title}</h3>
               <p className="text-[10px] text-white/60 font-medium mt-0.5">{card.meta}</p>
             </div>

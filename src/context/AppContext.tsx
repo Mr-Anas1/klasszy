@@ -30,6 +30,7 @@ import {
 import { App as CapacitorApp } from "@capacitor/app";
 import { Capacitor } from "@capacitor/core";
 import { db, auth } from "@/lib/firebase";
+import { toast } from "@/lib/toast-bus";
 import { appConfig } from "@/configs/appConfig";
 
 // Secondary Auth instance to onboard users without logging out the admin
@@ -177,10 +178,28 @@ export interface Circular {
   schoolId: string;
   title: string;
   content: string;
+  /** Optional longer body; falls back to `content` in UI when missing */
+  description?: string;
   targetAudience: "teachers" | "parents" | "both";
+  /** @deprecated prefer attachmentUrl + attachmentType */
   imageUrl?: string;
+  attachmentUrl?: string;
+  attachmentType?: "image" | "pdf";
+  attachmentDeleteToken?: string;
   createdBy: string;
+  /** Same as createdBy (user id); set for new Cloudinary-based uploads */
+  uploadedBy?: string;
   createdAt: Timestamp;
+}
+
+export interface ClassTimetable {
+  id: string;
+  schoolId: string;
+  classId: string;
+  attachmentUrl: string;
+  attachmentType: "image" | "pdf";
+  uploadedBy: string;
+  updatedAt: Timestamp;
 }
 
 export interface Homework {
@@ -246,6 +265,7 @@ interface AppContextType {
   diaryEntries: DiaryEntry[];
   usersList: UserProfile[];
   circulars: Circular[];
+  timetables: ClassTimetable[];
   skillStats: SkillStat[];
   studentDetails: StudentPersonalDetails[];
   remarks: Remark[];
@@ -279,8 +299,9 @@ interface AppContextType {
   deleteClass: (id: string) => Promise<void>;
   updateUserProfile: (id: string, data: Partial<UserProfile>) => Promise<void>;
   deleteUser: (id: string) => Promise<void>;
-  sendCircular: (data: Omit<Circular, "id" | "schoolId" | "createdBy" | "createdAt">) => Promise<void>;
+  sendCircular: (data: Omit<Circular, "id" | "schoolId" | "createdBy" | "createdAt" | "uploadedBy">) => Promise<void>;
   deleteCircular: (id: string) => Promise<void>;
+  upsertClassTimetable: (classId: string, data: { attachmentUrl: string; attachmentType: "image" | "pdf" }) => Promise<void>;
   selectedCircular: Circular | null;
   setSelectedCircular: (c: Circular | null) => void;
   updateStudentPersonalDetails: (studentId: string, data: Omit<StudentPersonalDetails, "id" | "studentId" | "createdAt" | "updatedAt">) => Promise<void>;
@@ -343,6 +364,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
   const [loading, setLoading] = useState(true);
   const [circulars, setCirculars] = useState<Circular[]>([]);
+  const [timetables, setTimetables] = useState<ClassTimetable[]>([]);
   const [selectedCircular, setSelectedCircular] = useState<Circular | null>(null);
   const [students, setStudents] = useState<Student[]>([]);
   const [classes, setClasses] = useState<ClassRoom[]>([]);
@@ -517,6 +539,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setCirculars(sorted);
     });
 
+    const unsubTimetables = onSnapshot(query(collection(db, "timetables"), ...qOptions), (snap) => {
+      setTimetables(snap.docs.map((d) => ({ id: d.id, ...d.data() } as ClassTimetable)));
+    });
+
     const unsubStudentDetails = onSnapshot(query(collection(db, "studentDetails"), ...qOptions), (snap) => {
       setStudentDetails(snap.docs.map(d => ({ id: d.id, ...d.data() } as StudentPersonalDetails)));
     });
@@ -543,7 +569,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => {
-      unsubStudents(); unsubClasses(); unsubAnnouncements(); unsubHomework(); unsubAttendance(); unsubStatus(); unsubUsers(); unsubCirculars(); unsubStudentDetails(); unsubRemarks(); unsubLeaveApplications(); unsubNotifications();
+      unsubStudents(); unsubClasses(); unsubAnnouncements(); unsubHomework(); unsubAttendance(); unsubStatus(); unsubUsers(); unsubCirculars(); unsubTimetables(); unsubStudentDetails(); unsubRemarks(); unsubLeaveApplications(); unsubNotifications();
     };
   }, [isLoggedIn, school, user]);
 
@@ -705,7 +731,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         createdAt: Timestamp.now()
       });
 
-      showAlert("Student Added", `Account created for ${data.name}!\n\nUsername: ${data.username}\nPassword: ${pass}`, "success");
+      toast.success(
+        `Account created for ${data.name}. Username: ${data.username} · Password: ${pass}`,
+        "Student created"
+      );
     } catch (err: any) {
       console.error(err);
       showAlert("Failed to add student", err.message, "error");
@@ -716,6 +745,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const addClass = async (c: Omit<ClassRoom, "id" | "schoolId">) => {
     if (!school) return;
     await addDoc(collection(db, "classes"), { ...c, schoolId: school.id });
+    toast.success("Class created successfully.", "Class created");
   };
 
   const sendAnnouncement = async (title: string, message: string) => {
@@ -737,6 +767,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       createdBy: user.id,
       createdAt: Timestamp.now()
     });
+    toast.success(`Homework assigned for ${data.className}.`, "Homework assigned");
   };
 
   const markAttendance = async (classId: string, date: string, records: AttendanceRecord["records"]) => {
@@ -805,6 +836,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         createdAt: Timestamp.now()
       });
       console.log(`Successfully onboarded ${role}: ${email}`);
+      toast.success(`${name} added as ${role}.`, role === "admin" ? "Admin created" : "Teacher created");
     } catch (err) {
       console.error("Onboarding failed:", err);
       throw err;
@@ -846,18 +878,49 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await deleteDoc(doc(db, "users", id));
   };
 
-  const sendCircular = async (data: Omit<Circular, "id" | "schoolId" | "createdBy" | "createdAt">) => {
+  const sendCircular = async (data: Omit<Circular, "id" | "schoolId" | "createdBy" | "createdAt" | "uploadedBy">) => {
     if (!school || !user) return;
     await addDoc(collection(db, "circulars"), {
       ...data,
       schoolId: school.id,
       createdBy: user.id,
+      uploadedBy: user.id,
       createdAt: Timestamp.now()
     });
+    toast.success("Circular published.", "Circular uploaded");
+  };
+
+  const upsertClassTimetable = async (classId: string, data: { attachmentUrl: string; attachmentType: "image" | "pdf" }) => {
+    if (!school || !user) return;
+    await setDoc(
+      doc(db, "timetables", classId),
+      {
+        schoolId: school.id,
+        classId,
+        attachmentUrl: data.attachmentUrl,
+        attachmentType: data.attachmentType,
+        uploadedBy: user.id,
+        updatedAt: Timestamp.now(),
+      },
+      { merge: true }
+    );
+    toast.success("Timetable updated for this class.", "Timetable saved");
   };
 
   const deleteCircular = async (id: string) => {
-    await deleteDoc(doc(db, "circulars", id));
+    const ref = doc(db, "circulars", id);
+    const snap = await getDoc(ref);
+    const data = (snap.exists() ? (snap.data() as { attachmentDeleteToken?: string }) : null) || null;
+    const token = data?.attachmentDeleteToken;
+    await deleteDoc(ref);
+    if (token) {
+      try {
+        const { deleteFromCloudinaryByToken } = await import("@/lib/cloudinary");
+        await deleteFromCloudinaryByToken(token);
+      } catch {
+        // Best-effort cleanup only
+      }
+    }
   };
 
   const updateStudentPersonalDetails = async (studentId: string, data: Omit<StudentPersonalDetails, "id" | "studentId" | "createdAt" | "updatedAt">) => {
@@ -1035,6 +1098,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setStudentDetailReturnTab,
         loading,
         circulars,
+        timetables,
         selectedCircular,
         setSelectedCircular,
         students,
@@ -1074,6 +1138,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         deleteUser,
         sendCircular,
         deleteCircular,
+        upsertClassTimetable,
         sendRemark,
         getStudentRemarks,
         applyLeave,

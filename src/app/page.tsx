@@ -7,6 +7,7 @@ import AppShell from "@/components/AppShell";
 import { isMobileApp } from "@/configs/appConfig";
 
 import GlobalModal from "@/components/GlobalModal";
+import ToastProvider from "@/components/ui/ToastProvider";
 
 function RootContent() {
   const { isLoggedIn, loading } = useApp();
@@ -37,12 +38,14 @@ function RootContent() {
 
 export default function Home() {
   return (
-    <AppProvider>
-      <div className="h-[100dvh] bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-100 via-slate-50 to-violet-100 lg:bg-[#f5f5f7]">
-        <div className="h-full w-full flex flex-col bg-white relative overflow-hidden lg:bg-transparent lg:overflow-visible">
-          <RootContent />
+    <ToastProvider>
+      <AppProvider>
+        <div className="h-[100dvh] bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-100 via-slate-50 to-violet-100 lg:bg-[#f5f5f7]">
+          <div className="h-full w-full flex flex-col bg-white relative overflow-hidden lg:bg-transparent lg:overflow-visible">
+            <RootContent />
+          </div>
         </div>
-      </div>
-    </AppProvider>
+      </AppProvider>
+    </ToastProvider>
   );
 }

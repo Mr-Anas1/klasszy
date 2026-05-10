@@ -1,8 +1,10 @@
 "use client";
 
 import React from "react";
-import { ArrowLeft, Clock, User, Image as ImageIcon } from "lucide-react";
+import { Clock, User } from "lucide-react";
 import { useApp } from "@/context/AppContext";
+import FileAttachmentPreview from "@/components/ui/FileAttachmentPreview";
+import { attachmentTypeFromUrl } from "@/lib/cloudinary";
 
 export default function CircularDetailScreen() {
   const { selectedCircular, setActiveTab, setSelectedCircular } = useApp();
@@ -69,20 +71,21 @@ export default function CircularDetailScreen() {
             </div>
           </div>
 
-          {selectedCircular.imageUrl && (
-            <div className="mb-8 rounded-3xl overflow-hidden border border-gray-100 bg-gray-50 shadow-inner group relative">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img 
-                src={selectedCircular.imageUrl} 
-                alt={selectedCircular.title} 
-                className="w-full h-auto object-cover max-h-[400px] transition-transform duration-500 group-hover:scale-105"
-              />
-              <div className="absolute inset-0 ring-1 ring-inset ring-black/10 rounded-3xl pointer-events-none" />
-            </div>
-          )}
+          {(() => {
+            const rawUrl = selectedCircular.attachmentUrl || selectedCircular.imageUrl;
+            if (!rawUrl) return null;
+            const t =
+              selectedCircular.attachmentType ||
+              attachmentTypeFromUrl(rawUrl);
+            return (
+              <div className="mb-8">
+                <FileAttachmentPreview url={rawUrl} type={t} title={selectedCircular.title} />
+              </div>
+            );
+          })()}
 
           <div className="prose prose-sm prose-p:leading-relaxed prose-p:text-gray-600 font-medium">
-            {selectedCircular.content.split('\n').map((paragraph, index) => (
+            {(selectedCircular.description || selectedCircular.content).split("\n").map((paragraph, index) => (
               <p key={index} className="mb-4 last:mb-0">
                 {paragraph}
               </p>

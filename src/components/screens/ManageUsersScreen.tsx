@@ -6,6 +6,7 @@ import {
   ArrowLeft, Plus, Search, GraduationCap, Trash2, X, User, Mail, Users,
 } from "lucide-react";
 import { useApp, Student, UserProfile } from "@/context/AppContext";
+import MobileSelect from "@/components/ui/MobileSelect";
 
 type Tab = "students" | "teachers";
 
@@ -70,7 +71,6 @@ export default function ManageUsersScreen() {
     await addStudent({ name: sData.name, classId: sData.classId, username: sData.username, password: sData.password });
     setSData({ name: "", classId: "", username: "", password: "" });
     setShowAddStudent(false);
-    showAlert("Added", "Student registered successfully.", "success");
   };
 
   const handleAddTeacher = async () => {
@@ -82,7 +82,6 @@ export default function ManageUsersScreen() {
       await onboardUser(tData.name, tData.email, "teacher", tData.password || undefined, []);
       setTData({ name: "", email: "", password: "" });
       setShowAddTeacher(false);
-      showAlert("Added", `Teacher registered. Login: ${tData.email}`, "success");
     } catch (err: any) {
       showAlert("Error", err.message, "error");
     }
@@ -213,16 +212,16 @@ export default function ManageUsersScreen() {
         <BottomSheet title="Add Student" onClose={() => setShowAddStudent(false)}>
           <div className="space-y-3">
             <Field placeholder="Full Name *" value={sData.name} onChange={v => setSData(p => ({ ...p, name: v }))} />
-            <select
+            <MobileSelect
+              placeholder="Select class *"
               value={sData.classId}
-              onChange={e => setSData(p => ({ ...p, classId: e.target.value }))}
-              className="w-full bg-gray-50 rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-indigo-200"
-            >
-              <option value="">Select Class *</option>
-              {classes.map(c => (
-                <option key={c.id} value={c.id}>{c.name}-{c.section}</option>
-              ))}
-            </select>
+              onChange={(v) => setSData((p) => ({ ...p, classId: v }))}
+              options={classes.map((c) => ({
+                value: c.id,
+                label: `${c.name} · ${c.section}`,
+              }))}
+              searchable
+            />
             <Field placeholder="Username (for student login)" value={sData.username} onChange={v => setSData(p => ({ ...p, username: v }))} />
             <Field placeholder="Password (optional)" type="password" value={sData.password} onChange={v => setSData(p => ({ ...p, password: v }))} />
           </div>

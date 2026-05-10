@@ -4,6 +4,8 @@ import React, { useState, useEffect, useMemo } from "react";
 import { ArrowLeft, User, Phone, MapPin, Calendar, Droplet, MessageSquare, Send, Plus, Check, X, Trash2 } from "lucide-react";
 import { createPortal } from "react-dom";
 import { useApp, Student, StudentPersonalDetails, Remark } from "@/context/AppContext";
+import { computeStudentAttendanceStats } from "@/lib/attendance-utils";
+import MobileSelect from "@/components/ui/MobileSelect";
 
 export default function StudentDetailScreen() {
   const { 
@@ -65,14 +67,11 @@ export default function StudentDetailScreen() {
 
   const attendancePct = React.useMemo(() => {
     if (!selectedStudent) return 0;
-    const statuses: ("present" | "absent" | "late")[] = [];
-    (attendance || []).forEach((doc) => {
-      const r = doc.records.find((rr) => rr.studentId === selectedStudent.id);
-      if (r) statuses.push(r.status);
-    });
-    const total = statuses.length;
-    const presentLike = statuses.filter((s) => s === "present" || s === "late").length;
-    return total === 0 ? 0 : Math.round((presentLike / total) * 100);
+    return computeStudentAttendanceStats(
+      selectedStudent.id,
+      selectedStudent.classId,
+      attendance
+    ).ratePct;
   }, [attendance, selectedStudent]);
 
   // Handle deleting a remark
@@ -442,22 +441,24 @@ export default function StudentDetailScreen() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">Blood Group</label>
-                      <select 
+                      <MobileSelect
+                        label="Blood Group"
+                        placeholder="Select"
                         value={detailsForm.bloodGroup}
-                        onChange={(e) => setDetailsForm({ ...detailsForm, bloodGroup: e.target.value })}
-                        className="w-full bg-gray-50 border-2 border-transparent rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:bg-white focus:border-indigo-100 transition-all"
-                      >
-                        <option value="">Select</option>
-                        <option value="A+">A+</option>
-                        <option value="A">A</option>
-                        <option value="B+">B+</option>
-                        <option value="B">B</option>
-                        <option value="O+">O+</option>
-                        <option value="O">O</option>
-                        <option value="AB+">AB+</option>
-                        <option value="AB">AB</option>
-                      </select>
+                        onChange={(v) => setDetailsForm({ ...detailsForm, bloodGroup: v })}
+                        options={[
+                          { value: "", label: "—" },
+                          { value: "A+", label: "A+" },
+                          { value: "A", label: "A" },
+                          { value: "B+", label: "B+" },
+                          { value: "B", label: "B" },
+                          { value: "O+", label: "O+" },
+                          { value: "O", label: "O" },
+                          { value: "AB+", label: "AB+" },
+                          { value: "AB", label: "AB" },
+                        ]}
+                        searchable={false}
+                      />
                     </div>
                     <div>
                       <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">Date of Birth</label>
@@ -602,16 +603,18 @@ export default function StudentDetailScreen() {
                   </div>
 
                   <div>
-                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">Type</label>
-                    <select
+                    <MobileSelect
+                      label="Type"
+                      placeholder="Remark type"
                       value={remarkType}
-                      onChange={(e) => setRemarkType(e.target.value as any)}
-                      className="w-full bg-gray-50 border-2 border-transparent rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:bg-white focus:border-indigo-100 transition-all"
-                    >
-                      <option value="general">General</option>
-                      <option value="academic">Academic</option>
-                      <option value="behavior">Behavior</option>
-                    </select>
+                      onChange={(v) => setRemarkType(v as "academic" | "behavior" | "general")}
+                      options={[
+                        { value: "general", label: "General" },
+                        { value: "academic", label: "Academic" },
+                        { value: "behavior", label: "Behavior" },
+                      ]}
+                      searchable={false}
+                    />
                   </div>
                 </div>
 

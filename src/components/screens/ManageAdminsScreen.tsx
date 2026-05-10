@@ -34,7 +34,6 @@ export default function ManageAdminsScreen() {
     setLoading(true);
     try {
       await onboardUser(formData.name, formData.email, "admin", formData.password);
-      showAlert("Success", `Admin account created for ${formData.name}`, "success");
       setFormData({ name: "", email: "", password: "", phone: "" });
       setShowCreateForm(false);
     } catch (error) {

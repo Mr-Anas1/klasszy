@@ -3,9 +3,15 @@
 import React, { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import {
-  ArrowLeft, Plus, Bell, Megaphone, Trash2, X, BookOpen,
+  Bell, Megaphone, Trash2, X, BookOpen, Paperclip, Loader2,
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
+import MobileSelect from "@/components/ui/MobileSelect";
+import {
+  attachmentTypeFromFile,
+  isCloudinaryConfigured,
+  uploadToCloudinary,
+} from "@/lib/cloudinary";
 
 type AudienceFilter = "teachers" | "parents" | "both";
 
@@ -13,16 +19,19 @@ export default function AdminAnnouncementsScreen() {
   const {
     circulars, classes, students,
     sendCircular, deleteCircular, sendNotification,
-    setActiveTab, setSelectedCircular, showAlert,
+    setActiveTab, setSelectedCircular, showAlert, showConfirm,
   } = useApp();
 
   const [showAddCircular, setShowAddCircular] = useState(false);
   const [showSendNotif, setShowSendNotif] = useState(false);
 
   const [circData, setCircData] = useState({
-    title: "", content: "", imageUrl: "",
+    title: "",
+    description: "",
     targetAudience: "both" as AudienceFilter,
   });
+  const [circFile, setCircFile] = useState<File | null>(null);
+  const [circUploading, setCircUploading] = useState(false);
   const [nData, setNData] = useState({
     title: "", message: "",
     type: "general" as "fee" | "general" | "instruction",
@@ -36,14 +45,50 @@ export default function AdminAnnouncementsScreen() {
   );
 
   const handleSendCircular = async () => {
-    if (!circData.title || !circData.content) {
-      showAlert("Missing Info", "Title and content are required.", "error");
+    if (!circData.title?.trim() || !circData.description?.trim()) {
+      showAlert("Missing Info", "Title and description are required.", "error");
       return;
     }
-    await sendCircular(circData);
-    showAlert("Posted!", "Circular has been published.", "success");
-    setCircData({ title: "", content: "", imageUrl: "", targetAudience: "both" });
-    setShowAddCircular(false);
+    if (circFile && !isCloudinaryConfigured()) {
+      showAlert(
+        "Upload not configured",
+        "Add NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME and NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET to upload files.",
+        "error"
+      );
+      return;
+    }
+
+    setCircUploading(true);
+    try {
+      let attachmentUrl: string | undefined;
+      let attachmentType: "image" | "pdf" | undefined;
+      let attachmentDeleteToken: string | undefined;
+      if (circFile) {
+        const up = await uploadToCloudinary(circFile);
+        attachmentUrl = up.secureUrl;
+        attachmentType = attachmentTypeFromFile(circFile);
+        attachmentDeleteToken = up.deleteToken;
+      }
+
+      const body = circData.description.trim();
+      await sendCircular({
+        title: circData.title.trim(),
+        description: body,
+        content: body,
+        targetAudience: circData.targetAudience,
+        attachmentUrl,
+        attachmentType,
+        attachmentDeleteToken,
+      });
+      setCircData({ title: "", description: "", targetAudience: "both" });
+      setCircFile(null);
+      setShowAddCircular(false);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Upload failed.";
+      showAlert("Circular failed", msg, "error");
+    } finally {
+      setCircUploading(false);
+    }
   };
 
   const handleSendNotif = async () => {
@@ -126,10 +171,17 @@ export default function AdminAnnouncementsScreen() {
                     </span>
                   </div>
                   <h4 className="text-sm font-black text-gray-900 truncate">{c.title}</h4>
-                  <p className="text-xs text-gray-400 font-medium line-clamp-1 mt-0.5">{c.content}</p>
+                  <p className="text-xs text-gray-400 font-medium line-clamp-1 mt-0.5">{c.description || c.content}</p>
                 </div>
                 <button
-                  onClick={e => { e.stopPropagation(); deleteCircular(c.id); }}
+                  onClick={e => {
+                    e.stopPropagation();
+                    showConfirm(
+                      "Delete circular?",
+                      "This action cannot be undone.",
+                      () => deleteCircular(c.id)
+                    );
+                  }}
                   className="w-8 h-8 bg-rose-50 text-rose-400 rounded-xl flex items-center justify-center opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all hover:bg-rose-500 hover:text-white shrink-0"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -150,22 +202,42 @@ export default function AdminAnnouncementsScreen() {
 
       {/* Post Circular Modal */}
       {showAddCircular && portalTarget && createPortal(
-        <BottomSheet title="Post Circular" onClose={() => setShowAddCircular(false)}>
+        <BottomSheet title="Post Circular" onClose={() => !circUploading && setShowAddCircular(false)}>
           <div className="space-y-3">
             <Field placeholder="Title *" value={circData.title} onChange={v => setCircData(p => ({ ...p, title: v }))} />
             <textarea
-              placeholder="Content *"
-              value={circData.content}
-              onChange={e => setCircData(p => ({ ...p, content: e.target.value }))}
+              placeholder="Description *"
+              value={circData.description}
+              onChange={e => setCircData(p => ({ ...p, description: e.target.value }))}
               rows={4}
               className="w-full bg-gray-50 rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-indigo-200 resize-none"
             />
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Attachment (optional)</p>
+              <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-4 py-4 transition-colors hover:border-indigo-200">
+                <Paperclip className="h-5 w-5 shrink-0 text-indigo-400" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-black text-gray-900">Image or PDF</p>
+                  <p className="truncate text-[11px] font-medium text-gray-400">
+                    {circFile ? circFile.name : "Tap to choose · uploads to Cloudinary"}
+                  </p>
+                </div>
+                <input
+                  type="file"
+                  accept="image/*,application/pdf"
+                  className="hidden"
+                  onChange={(e) => setCircFile(e.target.files?.[0] ?? null)}
+                />
+              </label>
+            </div>
             <div>
               <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Audience</p>
               <div className="flex gap-2">
                 {(["both", "teachers", "parents"] as AudienceFilter[]).map(a => (
                   <button
                     key={a}
+                    type="button"
+                    disabled={circUploading}
                     onClick={() => setCircData(p => ({ ...p, targetAudience: a }))}
                     className={`flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
                       circData.targetAudience === a ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-500"
@@ -177,7 +249,12 @@ export default function AdminAnnouncementsScreen() {
               </div>
             </div>
           </div>
-          <ActionButton label="Post Circular" onClick={handleSendCircular} />
+          <ActionButton
+            label={circUploading ? "Publishing…" : "Post Circular"}
+            onClick={handleSendCircular}
+            disabled={circUploading}
+            loading={circUploading}
+          />
         </BottomSheet>,
         portalTarget
       )}
@@ -210,24 +287,29 @@ export default function AdminAnnouncementsScreen() {
                 ))}
               </div>
               {nData.targetType === "class" && (
-                <select
+                <MobileSelect
+                  placeholder="Select class"
                   value={nData.targetId}
-                  onChange={e => setNData(p => ({ ...p, targetId: e.target.value }))}
-                  className="w-full bg-gray-50 rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-indigo-200"
-                >
-                  <option value="">Select Class *</option>
-                  {classes.map(c => <option key={c.id} value={c.id}>{c.name}-{c.section}</option>)}
-                </select>
+                  onChange={(v) => setNData((p) => ({ ...p, targetId: v }))}
+                  options={classes.map((c) => ({
+                    value: c.id,
+                    label: `${c.name} · ${c.section}`,
+                  }))}
+                  searchable
+                />
               )}
               {nData.targetType === "student" && (
-                <select
+                <MobileSelect
+                  placeholder="Select student"
                   value={nData.targetId}
-                  onChange={e => setNData(p => ({ ...p, targetId: e.target.value }))}
-                  className="w-full bg-gray-50 rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-indigo-200"
-                >
-                  <option value="">Select Student *</option>
-                  {students.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
+                  onChange={(v) => setNData((p) => ({ ...p, targetId: v }))}
+                  options={students.map((s) => ({
+                    value: s.id,
+                    label: s.name,
+                    subtitle: s.username,
+                  }))}
+                  searchable
+                />
               )}
             </div>
           </div>
@@ -269,12 +351,25 @@ function Field({ placeholder, value, onChange }: { placeholder: string; value: s
   );
 }
 
-function ActionButton({ label, onClick }: { label: string; onClick: () => void }) {
+function ActionButton({
+  label,
+  onClick,
+  disabled,
+  loading,
+}: {
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  loading?: boolean;
+}) {
   return (
     <button
+      type="button"
+      disabled={disabled}
       onClick={onClick}
-      className="w-full mt-5 bg-indigo-600 text-white py-4 rounded-2xl font-black text-sm shadow-lg shadow-indigo-200 active:scale-95 transition-transform"
+      className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-indigo-600 py-4 text-sm font-black text-white shadow-lg shadow-indigo-200 transition-transform active:scale-95 disabled:opacity-60"
     >
+      {loading && <Loader2 className="h-4 w-4 animate-spin" />}
       {label}
     </button>
   );

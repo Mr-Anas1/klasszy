@@ -3,9 +3,16 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import {
-  ArrowLeft, BookOpen, Calendar, Users, CheckCircle2, Check, X, Plus, ChevronLeft, ChevronRight, Info,
+  ArrowLeft, BookOpen, Calendar, CalendarClock, Users, CheckCircle2, Check, X, Plus, ChevronLeft, ChevronRight, Info,
+  Paperclip, Loader2,
 } from "lucide-react";
 import { useApp, UserProfile, ClassRoom, AttendanceRecord } from "@/context/AppContext";
+import MobileSelect from "@/components/ui/MobileSelect";
+import {
+  attachmentTypeFromFile,
+  isCloudinaryConfigured,
+  uploadToCloudinary,
+} from "@/lib/cloudinary";
 
 type Action = "none" | "attendance" | "homework" | "notification";
 type Priority = "High" | "Medium" | "Low";
@@ -44,6 +51,8 @@ export default function TeacherClassesScreen() {
     showAlert,
     attendance,
     usersList,
+    timetables,
+    upsertClassTimetable,
   } = useApp();
   const teacher = user as UserProfile;
 
@@ -78,6 +87,8 @@ export default function TeacherClassesScreen() {
   const [showAddStudent, setShowAddStudent] = useState(false);
   const [sData, setSData] = useState({ name: "", username: "", password: "" });
   const [selectedExistingStudentId, setSelectedExistingStudentId] = useState("");
+  const [ttFile, setTtFile] = useState<File | null>(null);
+  const [ttUploading, setTtUploading] = useState(false);
 
   const portalTarget = useMemo(
     () => (typeof document !== "undefined" ? document.body : null),
@@ -197,7 +208,6 @@ export default function TeacherClassesScreen() {
     });
     setHwForm({ subject: "", task: "", dueDate: "", priority: "Medium" });
     setAction("none");
-    triggerSuccess("Homework assigned!");
   };
 
   const handleSendNotification = async () => {
@@ -249,7 +259,37 @@ export default function TeacherClassesScreen() {
     triggerSuccess("Student assigned to class!");
   };
 
+  const handleUploadTimetable = async () => {
+    if (!selectedClass || !ttFile) {
+      showAlert("Pick a file", "Choose an image or PDF timetable.", "error");
+      return;
+    }
+    if (!isCloudinaryConfigured()) {
+      showAlert(
+        "Cloudinary required",
+        "Set NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME and NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET.",
+        "error"
+      );
+      return;
+    }
+    setTtUploading(true);
+    try {
+      const up = await uploadToCloudinary(ttFile);
+      const attachmentType = attachmentTypeFromFile(ttFile);
+      await upsertClassTimetable(selectedClass.id, {
+        attachmentUrl: up.secureUrl,
+        attachmentType,
+      });
+      setTtFile(null);
+    } catch (e: unknown) {
+      showAlert("Upload failed", e instanceof Error ? e.message : "Try again.", "error");
+    } finally {
+      setTtUploading(false);
+    }
+  };
+
   const presentCount = Object.values(tempAtt).filter(v => v === "present").length;
+  const classTimetable = selectedClass ? timetables.find((t) => t.classId === selectedClass.id) : undefined;
 
   // ── Class List ─────────────────────────────────────────────────────────────
   if (!selectedClass) {
@@ -363,31 +403,25 @@ export default function TeacherClassesScreen() {
 
             <div className="bg-white rounded-[24px] p-4 border border-gray-100 shadow-sm mb-4">
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Start Month</p>
-                  <select
-                    value={startMonth}
-                    onChange={(e) => setStartMonth(parseInt(e.target.value, 10))}
-                    className="w-full bg-gray-50 rounded-2xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-indigo-200"
-                  >
-                    {MONTH_NAMES.map((m, idx) => (
-                      <option key={m} value={idx}>{m}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Start Year</p>
-                  <select
-                    value={startYear}
-                    onChange={(e) => setStartYear(parseInt(e.target.value, 10))}
-                    className="w-full bg-gray-50 rounded-2xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-indigo-200"
-                  >
-                    {Array.from({ length: 7 }).map((_, i) => {
-                      const y = new Date().getFullYear() - 3 + i;
-                      return <option key={y} value={y}>{y}</option>;
-                    })}
-                  </select>
-                </div>
+                <MobileSelect
+                  label="Start Month"
+                  placeholder="Month"
+                  value={String(startMonth)}
+                  onChange={(v) => setStartMonth(parseInt(v, 10))}
+                  options={MONTH_NAMES.map((m, idx) => ({ value: String(idx), label: m }))}
+                  searchable
+                />
+                <MobileSelect
+                  label="Start Year"
+                  placeholder="Year"
+                  value={String(startYear)}
+                  onChange={(v) => setStartYear(parseInt(v, 10))}
+                  options={Array.from({ length: 7 }).map((_, i) => {
+                    const y = new Date().getFullYear() - 3 + i;
+                    return { value: String(y), label: String(y) };
+                  })}
+                  searchable={false}
+                />
               </div>
             </div>
 
@@ -655,6 +689,44 @@ export default function TeacherClassesScreen() {
                   <p className="text-[10px] text-white/70 mt-0.5">Message all parents</p>
                 </div>
               </button>
+            </div>
+
+            {/* Class timetable — Cloudinary + Firestore */}
+            <div className="mb-8 rounded-[28px] border border-sky-100 bg-white p-5 shadow-sm">
+              <div className="flex items-start gap-3">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-sky-50 text-sky-600">
+                  <CalendarClock className="h-6 w-6" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-black text-gray-900">Class timetable</p>
+                  <p className="mt-0.5 text-[11px] font-medium text-gray-400">
+                    {classTimetable
+                      ? `Last updated ${classTimetable.updatedAt?.seconds ? new Date(classTimetable.updatedAt.seconds * 1000).toLocaleDateString() : "recently"}`
+                      : "No file uploaded yet for this class."}
+                  </p>
+                  <label className="mt-3 flex cursor-pointer items-center gap-2 rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-3 py-3">
+                    <Paperclip className="h-4 w-4 shrink-0 text-sky-500" />
+                    <span className="truncate text-[11px] font-bold text-gray-600">
+                      {ttFile ? ttFile.name : "Choose image or PDF"}
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/*,application/pdf"
+                      className="hidden"
+                      onChange={(e) => setTtFile(e.target.files?.[0] ?? null)}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    disabled={ttUploading || !ttFile}
+                    onClick={handleUploadTimetable}
+                    className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-sky-600 py-3.5 text-xs font-black uppercase tracking-widest text-white shadow-lg shadow-sky-100 disabled:opacity-50"
+                  >
+                    {ttUploading && <Loader2 className="h-4 w-4 animate-spin" />}
+                    {ttUploading ? "Uploading…" : "Save timetable"}
+                  </button>
+                </div>
+              </div>
             </div>
 
             {/* Student List */}
@@ -975,18 +1047,17 @@ export default function TeacherClassesScreen() {
             <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
               <div className="border border-gray-100 rounded-2xl p-4">
                 <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Assign Existing Unassigned Student</p>
-                <select
+                <MobileSelect
+                  placeholder="Select student"
                   value={selectedExistingStudentId}
-                  onChange={e => setSelectedExistingStudentId(e.target.value)}
-                  className="w-full bg-gray-50 rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-emerald-200"
-                >
-                  <option value="">Select student</option>
-                  {unassignedStudents.map(student => (
-                    <option key={student.id} value={student.id}>
-                      {student.name} ({student.username || "No username"})
-                    </option>
-                  ))}
-                </select>
+                  onChange={setSelectedExistingStudentId}
+                  options={unassignedStudents.map((student) => ({
+                    value: student.id,
+                    label: student.name,
+                    subtitle: student.username || "No username",
+                  }))}
+                  searchable
+                />
                 <button
                   onClick={handleAssignExistingStudent}
                   disabled={!selectedExistingStudentId}

@@ -15,7 +15,7 @@ import {
 import { useApp, StudentPersonalDetails } from "@/context/AppContext";
 
 export default function ProfileScreen() {
-  const { user, school, logout, students, studentDetails } = useApp();
+  const { user, school, logout, students, studentDetails, classes } = useApp();
   if (!user) return null;
 
   const MENU_ITEMS = [
@@ -29,6 +29,23 @@ export default function ProfileScreen() {
   // Get student and their personal details for parent
   const currentStudent = user.role === "parent" ? students.find(s => s.parentId === user.id) : null;
   const studentPersonalDetails = currentStudent ? studentDetails.find(d => d.studentId === currentStudent.id) : null;
+
+  const parentClassLabel =
+    user.role === "parent" && currentStudent?.classId
+      ? (() => {
+          const cls = classes.find((c) => c.id === currentStudent.classId);
+          return cls ? `Class ${cls.name} · Section ${cls.section}` : null;
+        })()
+      : null;
+
+  const teacherClassSummary =
+    user.role === "teacher"
+      ? classes
+          .filter((c) => user.classIds?.includes(c.id))
+          .map((c) => `${c.name} ${c.section}`)
+          .slice(0, 4)
+          .join(", ") || null
+      : null;
 
   return (
     <div className="pb-36 px-5 pt-4">
@@ -44,6 +61,17 @@ export default function ProfileScreen() {
           {user.role} Account
         </p>
         <p className="text-xs text-white/30 mt-2 font-medium">{school?.name}</p>
+
+        {parentClassLabel && (
+          <p className="mt-3 rounded-xl bg-white/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white/90 ring-1 ring-white/15">
+            {parentClassLabel}
+          </p>
+        )}
+        {teacherClassSummary && (
+          <p className="mt-3 max-w-[95%] text-center text-[10px] font-black uppercase leading-snug tracking-widest text-white/85 ring-1 ring-white/10 px-3 py-2 rounded-xl bg-white/5">
+            Class teacher · {teacherClassSummary}
+          </p>
+        )}
 
         <div className="mt-6 flex gap-8">
           <div className="text-center">

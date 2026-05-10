@@ -80,6 +80,14 @@ export const FEATURE_REGISTRY: FeatureDefinition[] = [
     defaultEnabled: true,
   },
   {
+    id: "timetable",
+    name: "Class Timetable",
+    description: "Per-class timetable documents for families",
+    category: "academic",
+    tier: "basic",
+    defaultEnabled: true,
+  },
+  {
     id: "notifications",
     name: "Notifications",
     description: "Individual and class push notifications",
@@ -114,6 +122,7 @@ export const FEATURE_REGISTRY: FeatureDefinition[] = [
 export const FEATURE_NAV_MAP: Record<string, string> = {
   // Shared
   circulars: "circulars",
+  timetable: "timetable",
   attendance: "attendance",
   diary: "homework",
   notifications: "notifications",

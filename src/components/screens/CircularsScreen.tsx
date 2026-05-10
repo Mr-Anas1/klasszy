@@ -1,13 +1,35 @@
 "use client";
 
-import React, { useState } from "react";
-import { Info, ChevronRight, ArrowLeft, BookOpen, Search, Filter } from "lucide-react";
+import React, { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
+import { Info, ChevronRight, ArrowLeft, BookOpen, Search, Megaphone, Paperclip, Loader2, X } from "lucide-react";
 import { useApp } from "@/context/AppContext";
+import {
+  attachmentTypeFromFile,
+  isCloudinaryConfigured,
+  uploadToCloudinary,
+} from "@/lib/cloudinary";
+
+type AudienceFilter = "teachers" | "parents" | "both";
 
 export default function CircularsScreen() {
-  const { userRole, circulars, setActiveTab, setSelectedCircular } = useApp();
+  const { userRole, circulars, setActiveTab, setSelectedCircular, sendCircular, showAlert } = useApp();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "teachers" | "parents">("all");
+  const [showCompose, setShowCompose] = useState(false);
+  const [circData, setCircData] = useState({
+    title: "",
+    description: "",
+    targetAudience: "both" as AudienceFilter,
+  });
+  const [circFile, setCircFile] = useState<File | null>(null);
+  const [circUploading, setCircUploading] = useState(false);
+
+  const canPostCircular = userRole === "teacher" || userRole === "admin";
+  const portalTarget = useMemo(
+    () => (typeof document !== "undefined" ? document.body : null),
+    []
+  );
 
   const filteredCirculars = circulars.filter(c => {
     // Role based visibility
@@ -15,7 +37,10 @@ export default function CircularsScreen() {
     if (userRole === "parent" && c.targetAudience === "teachers") return false;
     
     // Search
-    const matchesSearch = c.title.toLowerCase().includes(search.toLowerCase()) || c.content.toLowerCase().includes(search.toLowerCase());
+    const body = (c.description || c.content || "").toLowerCase();
+    const matchesSearch =
+      c.title.toLowerCase().includes(search.toLowerCase()) ||
+      body.includes(search.toLowerCase());
     
     // Category filter
     const matchesFilter = filter === "all" || c.targetAudience === filter || c.targetAudience === "both";
@@ -26,6 +51,51 @@ export default function CircularsScreen() {
   const handleViewCircular = (c: any) => {
     setSelectedCircular(c);
     setActiveTab("view_circular");
+  };
+
+  const handleSendCircular = async () => {
+    if (!circData.title?.trim() || !circData.description?.trim()) {
+      showAlert("Missing Info", "Title and description are required.", "error");
+      return;
+    }
+    if (circFile && !isCloudinaryConfigured()) {
+      showAlert(
+        "Upload not configured",
+        "Add Cloudinary environment variables to attach files.",
+        "error"
+      );
+      return;
+    }
+    setCircUploading(true);
+    try {
+      let attachmentUrl: string | undefined;
+      let attachmentType: "image" | "pdf" | undefined;
+      let attachmentDeleteToken: string | undefined;
+      if (circFile) {
+        const up = await uploadToCloudinary(circFile);
+        attachmentUrl = up.secureUrl;
+        attachmentType = attachmentTypeFromFile(circFile);
+        attachmentDeleteToken = up.deleteToken;
+      }
+      const body = circData.description.trim();
+      await sendCircular({
+        title: circData.title.trim(),
+        description: body,
+        content: body,
+        targetAudience: circData.targetAudience,
+        attachmentUrl,
+        attachmentType,
+        attachmentDeleteToken,
+      });
+      setCircData({ title: "", description: "", targetAudience: "both" });
+      setCircFile(null);
+      setShowCompose(false);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Could not publish.";
+      showAlert("Failed", msg, "error");
+    } finally {
+      setCircUploading(false);
+    }
   };
 
   return (
@@ -42,6 +112,16 @@ export default function CircularsScreen() {
           <h2 className="text-2xl font-black text-gray-900 leading-none">Official Circulars</h2>
           <p className="text-sm text-gray-400 font-medium mt-1">School Notices & Updates</p>
         </div>
+        {canPostCircular && (
+          <button
+            type="button"
+            onClick={() => setShowCompose(true)}
+            className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-500 text-white shadow-lg shadow-amber-200 active:scale-95"
+            aria-label="Post circular"
+          >
+            <Megaphone className="h-5 w-5" />
+          </button>
+        )}
       </div>
 
       {/* Search & Filter */}
@@ -103,7 +183,7 @@ export default function CircularsScreen() {
                 <span className="text-[10px] font-bold text-gray-400">{new Date(c.createdAt.seconds * 1000).toLocaleDateString()}</span>
               </div>
               <h4 className="text-[15px] font-black text-gray-900 mt-2 leading-tight">{c.title}</h4>
-              <p className="text-xs text-gray-400 font-medium line-clamp-2 mt-1 leading-relaxed">{c.content}</p>
+              <p className="text-xs text-gray-400 font-medium line-clamp-2 mt-1 leading-relaxed">{c.description || c.content}</p>
               
               <div className="flex items-center gap-2 mt-4 text-indigo-500">
                 <BookOpen className="w-3 h-3" />
@@ -124,6 +204,81 @@ export default function CircularsScreen() {
           </div>
         )}
       </div>
+
+      {showCompose && portalTarget && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-end bg-black/60">
+          <div className="max-h-[85vh] w-full overflow-y-auto rounded-t-[40px] bg-white p-8">
+            <div className="mb-6 flex items-center justify-between">
+              <h3 className="text-xl font-black text-gray-900">Post Circular</h3>
+              <button
+                type="button"
+                disabled={circUploading}
+                onClick={() => setShowCompose(false)}
+                className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gray-100"
+              >
+                <X className="h-5 w-5 text-gray-600" />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <input
+                type="text"
+                placeholder="Title *"
+                value={circData.title}
+                onChange={(e) => setCircData((p) => ({ ...p, title: e.target.value }))}
+                className="w-full rounded-2xl bg-gray-50 px-5 py-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-indigo-200"
+              />
+              <textarea
+                placeholder="Description *"
+                value={circData.description}
+                onChange={(e) => setCircData((p) => ({ ...p, description: e.target.value }))}
+                rows={4}
+                className="w-full resize-none rounded-2xl bg-gray-50 px-5 py-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-indigo-200"
+              />
+              <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-4 py-4">
+                <Paperclip className="h-5 w-5 shrink-0 text-indigo-400" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-black text-gray-900">Attachment (optional)</p>
+                  <p className="truncate text-[11px] font-medium text-gray-400">
+                    {circFile ? circFile.name : "Image or PDF · Cloudinary"}
+                  </p>
+                </div>
+                <input
+                  type="file"
+                  accept="image/*,application/pdf"
+                  className="hidden"
+                  onChange={(e) => setCircFile(e.target.files?.[0] ?? null)}
+                />
+              </label>
+              <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Audience</p>
+              <div className="flex gap-2">
+                {(["both", "teachers", "parents"] as AudienceFilter[]).map((a) => (
+                  <button
+                    key={a}
+                    type="button"
+                    disabled={circUploading}
+                    onClick={() => setCircData((p) => ({ ...p, targetAudience: a }))}
+                    className={`flex-1 rounded-2xl py-3 text-[10px] font-black uppercase tracking-widest transition-all ${
+                      circData.targetAudience === a ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-500"
+                    }`}
+                  >
+                    {a === "both" ? "Everyone" : a}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <button
+              type="button"
+              disabled={circUploading}
+              onClick={handleSendCircular}
+              className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-indigo-600 py-4 text-sm font-black text-white shadow-lg shadow-indigo-200 disabled:opacity-60"
+            >
+              {circUploading && <Loader2 className="h-4 w-4 animate-spin" />}
+              {circUploading ? "Publishing…" : "Post Circular"}
+            </button>
+          </div>
+        </div>,
+        portalTarget
+      )}
     </div>
   );
 }

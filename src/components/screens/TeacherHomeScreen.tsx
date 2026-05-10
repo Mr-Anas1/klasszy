@@ -10,6 +10,10 @@ export default function TeacherHomeScreen() {
   const teacher = user as UserProfile;
 
   const myClasses = classes.filter(c => teacher.classIds?.includes(c.id));
+  const classTeacherLabel = myClasses.length
+    ? myClasses.map((c) => `${c.name} ${c.section}`).slice(0, 3).join(", ") +
+      (myClasses.length > 3 ? ` +${myClasses.length - 3}` : "")
+    : null;
   const pendingLeaves = leaveApplications.filter(l => l.status === "pending_teacher").length;
 
   const cards = [
@@ -60,6 +64,13 @@ export default function TeacherHomeScreen() {
         <p className="text-sm text-gray-400 font-medium mt-0.5">
           What would you like to do today?
         </p>
+        {classTeacherLabel && (
+          <div className="mt-3 inline-flex max-w-full flex-wrap items-center gap-2">
+            <span className="rounded-2xl bg-indigo-50 px-4 py-2 text-[11px] font-black uppercase tracking-widest text-indigo-700 ring-1 ring-indigo-100">
+              Class teacher · {classTeacherLabel}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Stats Strip */}

@@ -4,6 +4,12 @@ import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { CheckCircle2, XCircle, Clock, ChevronLeft, ChevronRight, X, Info } from "lucide-react";
 import { useApp } from "@/context/AppContext";
+import {
+  buildStudentAttendanceDateMap,
+  computeStudentAttendanceStats,
+  monthStatsFromMap,
+} from "@/lib/attendance-utils";
+import MobileSelect from "@/components/ui/MobileSelect";
 
 const MONTH_NAMES = [
   "January", "February", "March", "April", "May", "June",
@@ -87,22 +93,27 @@ export default function AttendanceScreen() {
   const primaryStudent = myStudents[0];
 
   const attendanceMap = useMemo<Record<string, "present" | "absent" | "late">>(() => {
-    const map: Record<string, "present" | "absent" | "late"> = {};
-    attendance.forEach((doc) => {
-      const r = doc.records.find((r) => r.studentId === primaryStudent?.id);
-      if (r) map[doc.date] = r.status;
-    });
-    return map;
+    return buildStudentAttendanceDateMap(
+      primaryStudent?.id,
+      primaryStudent?.classId,
+      attendance
+    );
   }, [attendance, primaryStudent]);
 
   const overallStats = useMemo(() => {
-    const all = Object.values(attendanceMap);
-    const present = all.filter((s) => s === "present").length;
-    const absent = all.filter((s) => s === "absent").length;
-    const late = all.filter((s) => s === "late").length;
-    const total = all.length;
-    return { present, absent, late, total, pct: total === 0 ? 0 : Math.round((present / total) * 100) };
-  }, [attendanceMap]);
+    const s = computeStudentAttendanceStats(
+      primaryStudent?.id,
+      primaryStudent?.classId,
+      attendance
+    );
+    return {
+      present: s.present,
+      absent: s.absent,
+      late: s.late,
+      total: s.totalMarked,
+      pct: s.ratePct,
+    };
+  }, [attendance, primaryStudent]);
 
   const selectedMonth = months[selectedMonthIdx] ?? months[0];
   const { year, month } = selectedMonth;
@@ -110,16 +121,7 @@ export default function AttendanceScreen() {
   const firstDayOfWeek = new Date(year, month, 1).getDay();
 
   const monthStats = useMemo(() => {
-    let present = 0, absent = 0, late = 0;
-    for (let d = 1; d <= daysInMonth; d++) {
-      const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-      const s = attendanceMap[dateStr];
-      if (s === "present") present++;
-      else if (s === "absent") absent++;
-      else if (s === "late") late++;
-    }
-    const total = present + absent + late;
-    return { present, absent, late, total, pct: total === 0 ? 0 : Math.round((present / total) * 100) };
+    return monthStatsFromMap(attendanceMap, year, month, daysInMonth);
   }, [attendanceMap, year, month, daysInMonth]);
 
   const myLeaveApplications = useMemo(() => {
@@ -186,8 +188,8 @@ export default function AttendanceScreen() {
         <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full translate-x-1/2 -translate-y-1/2" />
         <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full -translate-x-1/3 translate-y-1/3" />
 
-        <div className="w-28 h-28 relative flex items-center justify-center mb-4">
-          <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 96 96">
+        <div className="relative mb-4 flex h-28 w-28 max-w-full items-center justify-center">
+          <svg className="absolute inset-0 h-full w-full max-h-28 max-w-28 -rotate-90" viewBox="0 0 96 96">
             <circle cx="48" cy="48" r="44" stroke="currentColor" strokeWidth="5" fill="transparent" className="text-white/20" />
             <circle
               cx="48" cy="48" r="44" stroke="white" strokeWidth="5" fill="transparent"
@@ -196,7 +198,7 @@ export default function AttendanceScreen() {
               strokeLinecap="round" className="transition-all duration-1000"
             />
           </svg>
-          <span className="text-3xl font-black">{overallStats.pct}%</span>
+          <span className="text-2xl font-black tabular-nums sm:text-3xl">{overallStats.pct}%</span>
         </div>
 
         <h3 className="text-2xl font-black">
@@ -234,31 +236,25 @@ export default function AttendanceScreen() {
 
       <div className="mt-3 bg-white rounded-[24px] p-4 border border-gray-100 shadow-sm">
         <div className="grid grid-cols-2 gap-3">
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Start Month</p>
-            <select
-              value={startMonth}
-              onChange={(e) => setStartMonth(parseInt(e.target.value, 10))}
-              className="w-full bg-gray-50 rounded-2xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-indigo-200"
-            >
-              {MONTH_NAMES.map((m, idx) => (
-                <option key={m} value={idx}>{m}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Start Year</p>
-            <select
-              value={startYear}
-              onChange={(e) => setStartYear(parseInt(e.target.value, 10))}
-              className="w-full bg-gray-50 rounded-2xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-indigo-200"
-            >
-              {Array.from({ length: 7 }).map((_, i) => {
-                const y = defaultStart.startYear - 3 + i;
-                return <option key={y} value={y}>{y}</option>;
-              })}
-            </select>
-          </div>
+          <MobileSelect
+            label="Start Month"
+            placeholder="Month"
+            value={String(startMonth)}
+            onChange={(v) => setStartMonth(parseInt(v, 10))}
+            options={MONTH_NAMES.map((m, idx) => ({ value: String(idx), label: m }))}
+            searchable
+          />
+          <MobileSelect
+            label="Start Year"
+            placeholder="Year"
+            value={String(startYear)}
+            onChange={(v) => setStartYear(parseInt(v, 10))}
+            options={Array.from({ length: 7 }).map((_, i) => {
+              const y = defaultStart.startYear - 3 + i;
+              return { value: String(y), label: String(y) };
+            })}
+            searchable={false}
+          />
         </div>
       </div>
 

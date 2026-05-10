@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { BookOpen, Calendar, FileText, User, ShieldCheck, Bell } from "lucide-react";
+import { BookOpen, Calendar, CalendarClock, FileText, User, ShieldCheck, Bell } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { isNavItemEnabled } from "@/lib/feature-registry";
 import { appConfig } from "@/configs/appConfig";
@@ -30,6 +30,7 @@ export default function BottomNav() {
       { id: "circulars", Icon: Bell, label: "Circulars" },
       { id: "attendance", Icon: Calendar, label: "Attendance" },
       { id: "diary", Icon: FileText, label: "Diary" },
+      { id: "timetable", Icon: CalendarClock, label: "Timetable" },
       { id: "profile", Icon: User, label: "Profile" },
     ];
   };

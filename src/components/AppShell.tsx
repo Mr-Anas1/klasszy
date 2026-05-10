@@ -6,7 +6,7 @@ import AppHeader from "@/components/layout/AppHeader";
 import BottomNav from "@/components/layout/BottomNav";
 import {
   LayoutDashboard, Users, GraduationCap, BookOpen, School, Megaphone,
-  Activity, Bell, User, Calendar, FileText, BarChart3, ClipboardList,
+  Activity, Bell, User, Calendar, CalendarClock, FileText, BarChart3, ClipboardList,
   Newspaper, ChevronRight, ShieldCheck,
 } from "lucide-react";
 import { isNavItemEnabled } from "@/lib/feature-registry";
@@ -45,6 +45,7 @@ import DiaryHistoryScreen from "@/components/screens/DiaryHistoryScreen";
 import AnalysisScreen from "@/components/screens/AnalysisScreen";
 import RemarksScreen from "@/components/screens/RemarksScreen";
 import HomeworkDetailScreen from "@/components/screens/HomeworkDetailScreen";
+import TimetableScreen from "@/components/screens/TimetableScreen";
 
 // ─── Sidebar nav definitions ───────────────────────────────────────────────
 
@@ -80,6 +81,7 @@ const PARENT_NAV: NavItem[] = [
   { id: "home",          Icon: LayoutDashboard, label: "Home" },
   { id: "attendance",    Icon: Calendar,        label: "Attendance" },
   { id: "diary",         Icon: FileText,        label: "Diary" },
+  { id: "timetable",     Icon: CalendarClock,   label: "Timetable" },
   { id: "circulars",     Icon: Newspaper,       label: "Circulars" },
   { id: "notifications", Icon: Bell,            label: "Notifications" },
   { id: "profile",       Icon: User,            label: "Profile" },
@@ -89,6 +91,7 @@ const STUDENT_NAV: NavItem[] = [
   { id: "home",       Icon: LayoutDashboard, label: "Home" },
   { id: "attendance", Icon: Calendar,        label: "Attendance" },
   { id: "diary",      Icon: FileText,        label: "Diary" },
+  { id: "timetable",  Icon: CalendarClock,   label: "Timetable" },
   { id: "analysis",   Icon: BarChart3,       label: "Analysis" },
   { id: "circulars",  Icon: Newspaper,       label: "Circulars" },
   { id: "profile",    Icon: User,            label: "Profile" },
@@ -117,12 +120,14 @@ function getEffectiveTab(activeTab: string, userRole: string): string {
       homework_detail: "home",
       homework_history:"home",
       student_detail:  "home",
+      timetable:       "timetable",
     },
     student: {
       view_circular:   "circulars",
       diary_history:   "diary",
       remarks_history: "home",
       homework_detail: "home",
+      timetable:       "timetable",
     },
   };
   return maps[userRole]?.[activeTab] ?? activeTab;
@@ -226,8 +231,8 @@ export default function AppShell() {
       : userRole === "teacher"
         ? ["home", "circulars", "profile"]
         : userRole === "parent"
-          ? ["home", "attendance", "diary", "circulars", "notifications", "profile"]
-          : ["home", "attendance", "diary", "analysis", "circulars", "profile"];
+          ? ["home", "attendance", "diary", "timetable", "circulars", "notifications", "profile"]
+          : ["home", "attendance", "diary", "timetable", "analysis", "circulars", "profile"];
   const showBottomNav = mobileRootTabs.includes(activeTab);
 
   const getScreen = () => {
@@ -283,6 +288,7 @@ export default function AppShell() {
         case "remarks_history":      return <RemarksScreen />;
         case "student_detail":       return <StudentDetailScreen />;
         case "teacher_detail":       return <TeacherDetailScreen />;
+        case "timetable":            return <TimetableScreen />;
         case "profile":              return <ProfileScreen />;
         default:                     return <HomeScreen />;
       }
@@ -298,6 +304,7 @@ export default function AppShell() {
       case "analysis":               return <AnalysisScreen />;
       case "remarks_history":        return <RemarksScreen />;
       case "homework_detail":        return <HomeworkDetailScreen />;
+      case "timetable":              return <TimetableScreen />;
       case "profile":                return <ProfileScreen />;
       default:                       return <HomeScreen />;
     }
