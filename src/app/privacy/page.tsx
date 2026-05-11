@@ -197,12 +197,6 @@ export default function PrivacyPolicyPage() {
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">{schoolName}</p>
         </footer>
       </main>
-
-      {/* Custom Styles for horizontal scrollbar hiding */}
-      <style jsx global>{`
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-      `}</style>
     </div>
   );
 }
