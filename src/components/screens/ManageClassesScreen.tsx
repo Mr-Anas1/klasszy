@@ -35,6 +35,7 @@ export default function ManageClassesScreen() {
     setActiveTab, studentDetailReturnTab, setStudentDetailReturnTab,
     showConfirm, showAlert, updateStudent, setSelectedStudent,
     timetables, upsertClassTimetable, deleteClassTimetable,
+    setClassTeacherForClass,
   } = useApp();
 
   const [view, setView] = useState<View>("grades");
@@ -52,10 +53,12 @@ export default function ManageClassesScreen() {
   const [ttFile, setTtFile] = useState<File | null>(null);
   const [ttUploading, setTtUploading] = useState(false);
   const [showAddClass, setShowAddClass] = useState(false);
+  const [assigningClassTeacher, setAssigningClassTeacher] = useState<{ classId: string } | null>(null);
   const [cData, setCData] = useState({
     grade: STANDARD_GRADES[0],
     section: "A",
     customSection: "",
+    classTeacherId: "",
   });
 
   const portalTarget = useMemo(
@@ -81,10 +84,26 @@ export default function ManageClassesScreen() {
       showAlert("Missing Info", "Grade and section are required.", "error");
       return;
     }
-    await addClass({ name: cData.grade, section: finalSection });
-    setCData({ grade: STANDARD_GRADES[0], section: "A", customSection: "" });
+    await addClass({
+      name: cData.grade,
+      section: finalSection,
+      classTeacherId: (cData.classTeacherId || "").trim() || "",
+    });
+    setCData({ grade: STANDARD_GRADES[0], section: "A", customSection: "", classTeacherId: "" });
     setShowAddClass(false);
   };
+
+  const teacherOptions = useMemo(() => {
+    return usersList
+      .filter((u) => u.role === "teacher")
+      .slice()
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((t) => ({
+        value: t.id,
+        label: t.name,
+        subtitle: t.email,
+      }));
+  }, [usersList]);
 
   const sectionAttendanceByDate = useMemo<Record<string, AttendanceRecord>>(() => {
     const map: Record<string, AttendanceRecord> = {};
@@ -212,6 +231,7 @@ export default function ManageClassesScreen() {
           <div className="space-y-3">
             {sections.map(s => {
               const count = students.filter(st => st.classId === s.id).length;
+              const teacherName = (s.classTeacherName || "").trim();
               return (
                 <div key={s.id} className="flex gap-2 group">
                   <button
@@ -227,9 +247,19 @@ export default function ManageClassesScreen() {
                         <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold mt-0.5">
                           {count} student{count !== 1 ? "s" : ""}
                         </p>
+                        <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold mt-1">
+                          {teacherName ? `Class teacher: ${teacherName}` : "Class teacher: Not assigned"}
+                        </p>
                       </div>
                     </div>
                     <Users className="w-5 h-5 text-gray-300 group-hover:text-indigo-400 transition-colors" />
+                  </button>
+                  <button
+                    onClick={() => setAssigningClassTeacher({ classId: s.id })}
+                    className="w-14 bg-white border border-gray-100 rounded-[28px] flex items-center justify-center text-gray-400 hover:text-indigo-600 hover:border-indigo-100 transition-all opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
+                    aria-label="Assign class teacher"
+                  >
+                    <Users className="w-5 h-5" />
                   </button>
                   <button
                     onClick={() => handleDeleteClass(s.id)}
@@ -255,8 +285,24 @@ export default function ManageClassesScreen() {
           <AddClassModal
             cData={cData}
             setCData={setCData}
+            teacherOptions={teacherOptions}
             onClose={() => setShowAddClass(false)}
             onAdd={handleAddClass}
+          />,
+          portalTarget
+        )}
+
+        {assigningClassTeacher && portalTarget && createPortal(
+          <AssignClassTeacherModal
+            classId={assigningClassTeacher.classId}
+            classes={classes}
+            teacherOptions={teacherOptions}
+            onClose={() => setAssigningClassTeacher(null)}
+            onSave={async (classId: string, teacherId: string) => {
+              await setClassTeacherForClass(classId, teacherId || null);
+              showAlert("Updated", "Class teacher updated.", "success");
+              setAssigningClassTeacher(null);
+            }}
           />,
           portalTarget
         )}
@@ -819,6 +865,7 @@ export default function ManageClassesScreen() {
         <AddClassModal
           cData={cData}
           setCData={setCData}
+          teacherOptions={teacherOptions}
           onClose={() => setShowAddClass(false)}
           onAdd={handleAddClass}
         />,
@@ -830,15 +877,17 @@ export default function ManageClassesScreen() {
 
 // ─── Add Class Modal ──────────────────────────────────────────────────────────
 
-type CData = { grade: string; section: string; customSection: string };
+type CData = { grade: string; section: string; customSection: string; classTeacherId: string };
 
 function AddClassModal({
   cData, setCData, onClose, onAdd,
+  teacherOptions,
 }: {
   cData: CData;
   setCData: React.Dispatch<React.SetStateAction<CData>>;
   onClose: () => void;
   onAdd: () => void;
+  teacherOptions: { value: string; label: string; subtitle?: string }[];
 }) {
   return (
     <div className="fixed inset-0 bg-black/60 z-[100] flex items-end">
@@ -886,6 +935,15 @@ function AddClassModal({
               className="w-full bg-gray-50 rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-indigo-200"
             />
           )}
+
+          <MobileSelect
+            label="Class Teacher (optional)"
+            placeholder="Select teacher"
+            value={cData.classTeacherId}
+            onChange={(v) => setCData((p) => ({ ...p, classTeacherId: v }))}
+            options={[{ value: "", label: "Not assigned" }, ...teacherOptions]}
+            searchable
+          />
         </div>
 
         <button
@@ -893,6 +951,56 @@ function AddClassModal({
           className="w-full mt-6 bg-indigo-600 text-white py-4 rounded-2xl font-black text-sm shadow-lg shadow-indigo-200 active:scale-95 transition-transform"
         >
           Create Class
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function AssignClassTeacherModal({
+  classId,
+  classes,
+  teacherOptions,
+  onClose,
+  onSave,
+}: {
+  classId: string;
+  classes: ClassRoom[];
+  teacherOptions: { value: string; label: string; subtitle?: string }[];
+  onClose: () => void;
+  onSave: (classId: string, teacherId: string) => Promise<void>;
+}) {
+  const cls = classes.find((c) => c.id === classId);
+  const [teacherId, setTeacherId] = useState((cls?.classTeacherId || "").trim());
+  return (
+    <div className="fixed inset-0 bg-black/60 z-[110] flex items-end">
+      <div className="bg-white w-full rounded-t-[40px] p-8">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h3 className="text-xl font-black text-gray-900">Assign Class Teacher</h3>
+            <p className="text-[11px] text-gray-400 font-medium mt-0.5">
+              {cls ? `${cls.name}-${cls.section}` : ""}
+            </p>
+          </div>
+          <button onClick={onClose} className="w-10 h-10 bg-gray-100 rounded-2xl flex items-center justify-center">
+            <X className="w-5 h-5 text-gray-600" />
+          </button>
+        </div>
+
+        <MobileSelect
+          label="Class Teacher"
+          placeholder="Select teacher"
+          value={teacherId}
+          onChange={setTeacherId}
+          options={[{ value: "", label: "Not assigned" }, ...teacherOptions]}
+          searchable
+        />
+
+        <button
+          onClick={() => onSave(classId, teacherId)}
+          className="w-full mt-6 bg-indigo-600 text-white py-4 rounded-2xl font-black text-sm shadow-lg shadow-indigo-200 active:scale-95 transition-transform"
+        >
+          Save
         </button>
       </div>
     </div>

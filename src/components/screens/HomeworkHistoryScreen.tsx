@@ -3,11 +3,15 @@
 import React, { useState } from "react";
 import { ArrowLeft, Search, Calendar, BookOpen, Clock, FileText, Filter } from "lucide-react";
 import { useApp } from "@/context/AppContext";
+import { getLocalISODate, isExpiredAfter } from "@/lib/date-window";
 
 export default function HomeworkHistoryScreen() {
   const { user, userRole, homework, setActiveTab } = useApp();
   const [search, setSearch] = useState("");
   const [subjectFilter, setSubjectFilter] = useState("All");
+  const [tab, setTab] = useState<"current" | "past">("current");
+
+  const today = getLocalISODate(new Date());
 
   const filteredHomework = homework.filter(h => {
     // Role based filtering
@@ -15,6 +19,10 @@ export default function HomeworkHistoryScreen() {
     const isAdmin = userRole === "admin";
     const isRelevant = isOwner || isAdmin;
     if (!isRelevant) return false;
+
+    const isPast = isExpiredAfter(today, h.dueDate);
+    if (tab === "past" && !isPast) return false;
+    if (tab === "current" && isPast) return false;
 
     // Search
     const matchesSearch = h.subject.toLowerCase().includes(search.toLowerCase()) || h.task.toLowerCase().includes(search.toLowerCase());
@@ -35,6 +43,27 @@ export default function HomeworkHistoryScreen() {
           <h2 className="text-2xl font-black text-gray-900 leading-none">Homework History</h2>
           <p className="text-sm text-gray-400 mt-0.5">View past assignments</p>
         </div>
+      </div>
+
+      <div className="bg-white border border-gray-100 rounded-3xl p-2 shadow-sm grid grid-cols-2 gap-2 mb-6">
+        {([
+          { id: "current", label: "Current" },
+          { id: "past", label: "Past" },
+        ] as const).map((t) => {
+          const active = tab === t.id;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTab(t.id)}
+              className={`min-w-0 rounded-2xl px-2 py-3 transition-all active:scale-[0.99] ${
+                active ? "bg-gray-900 text-white shadow-md" : "bg-transparent text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              <span className="min-w-0 truncate text-[10px] font-black uppercase tracking-widest">{t.label}</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Search & Filter */}

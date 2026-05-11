@@ -86,6 +86,8 @@ export default function LeaveManagementScreen() {
     }
     setSubmitting(true);
     try {
+      const cls = classes.find((c) => c.id === currentStudent.classId);
+      const hasClassTeacher = Boolean((cls?.classTeacherId || "").trim());
       await applyLeave({
         studentId: currentStudent.id,
         fromDate: form.fromDate,
@@ -93,7 +95,11 @@ export default function LeaveManagementScreen() {
         reason: form.reason.trim(),
       });
       setForm({ fromDate: today, toDate: today, reason: "" });
-      showAlert("Submitted", "Leave application submitted to teacher.", "success");
+      showAlert(
+        "Submitted",
+        hasClassTeacher ? "Leave application submitted to class teacher." : "No class teacher assigned. Leave sent to admin.",
+        "success"
+      );
       setTab("pending");
     } finally {
       setSubmitting(false);
@@ -108,10 +114,14 @@ export default function LeaveManagementScreen() {
 
     const myLeaves = useMemo(() => {
       if (userRole === "admin") return leaveApplications;
-      const myClassIds = reviewer?.classIds ?? [];
-      const myStudentIds = students.filter((s) => myClassIds.includes(s.classId)).map((s) => s.id);
-      return leaveApplications.filter((l) => myStudentIds.includes(l.studentId));
-    }, [leaveApplications, reviewer?.classIds, students, userRole]);
+      const myClassTeacherClassIds = classes
+        .filter((c) => (c.classTeacherId || "").trim() === reviewer.id)
+        .map((c) => c.id);
+      const myStudentIds = students.filter((s) => myClassTeacherClassIds.includes(s.classId)).map((s) => s.id);
+      return leaveApplications.filter(
+        (l) => myStudentIds.includes(l.studentId) || (l.assignedTeacherId || "").trim() === reviewer.id
+      );
+    }, [classes, leaveApplications, reviewer.id, students, userRole]);
 
     const pending = useMemo(() => {
       return userRole === "admin"

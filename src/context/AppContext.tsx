@@ -14,6 +14,7 @@ import {
   getDoc,
   setDoc,
   arrayUnion,
+  arrayRemove,
   Timestamp,
   orderBy,
   limit
@@ -73,6 +74,7 @@ export interface UserProfile {
   password?: string;
   role: UserRole;
   classIds?: string[]; // for teachers
+  classTeacherClassIds?: string[]; // for teachers (classes where they are the class teacher)
   studentIds?: string[]; // for parents
   deviceToken?: string;
   createdAt: Timestamp;
@@ -129,6 +131,9 @@ export interface LeaveApplication {
   reason: string;
   status: LeaveApplicationStatus;
 
+  assignedTeacherId?: string;
+  assignedTeacherName?: string;
+
   createdById: string;
   createdByName: string;
   createdByRole: UserRole;
@@ -171,6 +176,9 @@ export interface ClassRoom {
   schoolId: string;
   name: string; // e.g. "10"
   section: string; // e.g. "A"
+
+  classTeacherId?: string;
+  classTeacherName?: string;
 }
 
 export interface Announcement {
@@ -316,6 +324,8 @@ interface AppContextType {
   markAttendance: (classId: string, date: string, records: AttendanceRecord["records"]) => Promise<void>;
   toggleDiaryEntry: (id: string) => Promise<void>;
   updateTeacherClasses: (teacherId: string, classIds: string[]) => Promise<void>;
+  setClassTeacherForClass: (classId: string, teacherId: string | null) => Promise<void>;
+  setTeacherAsClassTeacher: (teacherId: string, classIds: string[]) => Promise<void>;
   onboardUser: (name: string, email: string, role: UserRole, password?: string, classIds?: string[]) => Promise<void>;
   updateStudent: (id: string, data: Partial<Student>) => Promise<void>;
   deleteStudent: (id: string) => Promise<void>;
@@ -832,7 +842,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const addClass = async (c: Omit<ClassRoom, "id" | "schoolId">) => {
     if (!school) return;
-    await addDoc(collection(db, "classes"), { ...c, schoolId: school.id });
+    const teacherId = (c.classTeacherId || "").trim();
+    const teacher = teacherId ? usersList.find((u) => u.id === teacherId) : null;
+    const teacherName = (c.classTeacherName || teacher?.name || "").trim();
+
+    const ref = await addDoc(collection(db, "classes"), {
+      ...c,
+      schoolId: school.id,
+      classTeacherId: teacherId || "",
+      classTeacherName: teacherName || "",
+    });
+
+    if (teacherId) {
+      await updateDoc(doc(db, "users", teacherId), {
+        classTeacherClassIds: arrayUnion(ref.id),
+      });
+    }
     toast.success("Class created successfully.", "Class created");
   };
 
@@ -898,6 +923,70 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await updateDoc(doc(db, "users", teacherId), { classIds });
   };
 
+  const setClassTeacherForClass = async (classId: string, teacherId: string | null) => {
+    if (!school) return;
+    if (!classId) return;
+
+    const classRef = doc(db, "classes", classId);
+    const classSnap = await getDoc(classRef);
+    const existing = classSnap.exists() ? ({ id: classSnap.id, ...classSnap.data() } as ClassRoom) : null;
+    const previousTeacherId = (existing?.classTeacherId || "").trim();
+
+    const nextTeacherId = (teacherId || "").trim();
+    const nextTeacher = nextTeacherId ? usersList.find((u) => u.id === nextTeacherId) : null;
+    const nextTeacherName = nextTeacher?.name || "";
+
+    await updateDoc(classRef, {
+      classTeacherId: nextTeacherId || "",
+      classTeacherName: nextTeacherName || "",
+    } as Partial<ClassRoom>);
+
+    if (previousTeacherId && previousTeacherId !== nextTeacherId) {
+      await updateDoc(doc(db, "users", previousTeacherId), {
+        classTeacherClassIds: arrayRemove(classId),
+      });
+    }
+    if (nextTeacherId && previousTeacherId !== nextTeacherId) {
+      await updateDoc(doc(db, "users", nextTeacherId), {
+        classTeacherClassIds: arrayUnion(classId),
+      });
+    }
+  };
+
+  const setTeacherAsClassTeacher = async (teacherId: string, classIds: string[]) => {
+    if (!school) return;
+    if (!teacherId) return;
+
+    const normalized = Array.from(new Set((classIds || []).filter(Boolean)));
+    const teacher = usersList.find((u) => u.id === teacherId);
+    const teacherName = teacher?.name || "";
+
+    const currentlyAssignedClassIds = classes
+      .filter((c) => (c.classTeacherId || "").trim() === teacherId)
+      .map((c) => c.id);
+
+    const toUnassign = currentlyAssignedClassIds.filter((id) => !normalized.includes(id));
+    const toAssign = normalized.filter((id) => !currentlyAssignedClassIds.includes(id));
+
+    for (const classId of toUnassign) {
+      await updateDoc(doc(db, "classes", classId), {
+        classTeacherId: "",
+        classTeacherName: "",
+      } as Partial<ClassRoom>);
+    }
+
+    for (const classId of toAssign) {
+      await updateDoc(doc(db, "classes", classId), {
+        classTeacherId: teacherId,
+        classTeacherName: teacherName,
+      } as Partial<ClassRoom>);
+    }
+
+    await updateDoc(doc(db, "users", teacherId), {
+      classTeacherClassIds: normalized,
+    } as Partial<UserProfile>);
+  };
+
   const onboardUser = async (name: string, email: string, role: UserRole, password?: string, classIds: string[] = []) => {
     if (!school) return;
     const pass = password || "password123";
@@ -955,6 +1044,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         await updateDoc(doc(db, "students", studentDoc.id), { classId: "" });
       }
     }
+
+    const classRef = doc(db, "classes", id);
+    const classSnap = await getDoc(classRef);
+    const existing = classSnap.exists() ? ({ id: classSnap.id, ...classSnap.data() } as ClassRoom) : null;
+    const teacherId = (existing?.classTeacherId || "").trim();
+    if (teacherId) {
+      await updateDoc(doc(db, "users", teacherId), {
+        classTeacherClassIds: arrayRemove(id),
+      });
+    }
     await deleteDoc(doc(db, "classes", id));
   };
 
@@ -963,6 +1062,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const deleteUser = async (id: string) => {
+    // If this user is a class teacher anywhere, unassign them first.
+    const impacted = classes.filter((c) => (c.classTeacherId || "").trim() === id);
+    for (const c of impacted) {
+      await updateDoc(doc(db, "classes", c.id), {
+        classTeacherId: "",
+        classTeacherName: "",
+      } as Partial<ClassRoom>);
+    }
     await deleteDoc(doc(db, "users", id));
   };
 
@@ -1074,6 +1181,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!student) return;
     if (!data.fromDate || !data.toDate || !data.reason.trim()) return;
 
+    const cls = classes.find((c) => c.id === student.classId);
+    const assignedTeacherId = (cls?.classTeacherId || "").trim();
+    const assignedTeacherName = (cls?.classTeacherName || "").trim();
+    const initialStatus: LeaveApplicationStatus = assignedTeacherId ? "pending_teacher" : "pending_admin";
+
     await addDoc(collection(db, "leaveApplications"), {
       schoolId: school.id,
       studentId: data.studentId,
@@ -1081,7 +1193,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       fromDate: data.fromDate,
       toDate: data.toDate,
       reason: data.reason.trim(),
-      status: "pending_teacher" as LeaveApplicationStatus,
+      status: initialStatus,
+      assignedTeacherId: assignedTeacherId || "",
+      assignedTeacherName: assignedTeacherName || "",
       createdById: user.id,
       createdByName: user.name,
       createdByRole: user.role,
@@ -1097,6 +1211,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const leave = leaveApplications.find(l => l.id === leaveId);
     if (!leave) return;
     if (leave.status !== "pending_teacher") return;
+
+    const isAssignedTeacher = (leave.assignedTeacherId || "").trim() === user.id;
+    const cls = classes.find((c) => c.id === leave.classId);
+    const isClassTeacher = (cls?.classTeacherId || "").trim() === user.id;
+    if (!isAssignedTeacher && !isClassTeacher) return;
 
     const newStatus: LeaveApplicationStatus = data.decision === "approve" ? "pending_admin" : "rejected_by_teacher";
 
@@ -1241,6 +1360,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         markAttendance,
         toggleDiaryEntry,
         updateTeacherClasses,
+        setClassTeacherForClass,
+        setTeacherAsClassTeacher,
         onboardUser,
         updateStudent,
         deleteStudent,

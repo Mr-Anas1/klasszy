@@ -23,13 +23,15 @@ export default function TeacherActivitiesScreen() {
     []
   );
 
-  // Only leaves for classes this teacher manages
-  const myClassIds = teacher.classIds ?? [];
-  const myStudentIds = students
-    .filter(s => myClassIds.includes(s.classId))
-    .map(s => s.id);
+  // Only leaves for classes where this teacher is the class teacher
+  const myClassTeacherClassIds = classes
+    .filter((c) => (c.classTeacherId || "").trim() === teacher.id)
+    .map((c) => c.id);
+  const myStudentIds = students.filter((s) => myClassTeacherClassIds.includes(s.classId)).map((s) => s.id);
 
-  const myLeaves = leaveApplications.filter(l => myStudentIds.includes(l.studentId));
+  const myLeaves = leaveApplications.filter(
+    (l) => myStudentIds.includes(l.studentId) || (l.assignedTeacherId || "").trim() === teacher.id
+  );
   const pending = myLeaves.filter(l => l.status === "pending_teacher");
   const history = myLeaves.filter(l => l.status !== "pending_teacher");
 

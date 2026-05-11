@@ -103,8 +103,8 @@ export default function HomeScreen() {
     {
       id: "leave_management",
       Icon: Send,
-      title: "Leave Management",
-      stat: "Open",
+      title: "Management",
+      stat: "Leave",
       meta: "apply & track",
       bg: "bg-[#10B981]",     // emerald
     },
@@ -130,17 +130,17 @@ export default function HomeScreen() {
     {
       id: "timetable",
       Icon: CalendarClock,
-      title: "Timetable",
-      stat: "Open",
+      title: "Open",
+      stat: "Timetable",
       meta: "class schedule",
       bg: "bg-[#0EA5E9]",
     },
     {
       id: "exams",
       Icon: CalendarCheck,
-      title: "Exams",
-      stat: "View",
-      meta: "schedules",
+      title: "View",
+      stat: "Exams",
+      meta: "exams & schedules",
       bg: "bg-[#6366F1]",
     },
     {
@@ -204,10 +204,10 @@ export default function HomeScreen() {
             {/* Stats + Label */}
             <div className="min-w-0">
               <p className="text-2xl font-black leading-none tabular-nums sm:text-3xl truncate max-w-full">
-                {card.stat}
+                {card?.stat}
               </p>
-              <h3 className="text-sm font-black mt-1 leading-tight">{card.title}</h3>
-              <p className="text-[10px] text-white/60 font-medium mt-0.5">{card.meta}</p>
+              <h3 className="text-sm font-black mt-1 leading-tight">{card?.title}</h3>
+              <p className="text-[10px] text-white/60 font-medium mt-0.5">{card?.meta}</p>
             </div>
 
             {/* Decorative circles */}

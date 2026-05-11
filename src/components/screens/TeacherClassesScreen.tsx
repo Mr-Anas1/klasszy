@@ -19,7 +19,7 @@ type Action = "none" | "attendance" | "homework" | "notification";
 type Priority = "High" | "Medium" | "Low";
 type ClassMessageAction = "none" | "notification" | "fee_reminder";
 
-type ViewMode = "manage" | "attendance_history";
+type ViewMode = "manage" | "attendance_history" | "homework_history";
 
 const MONTH_NAMES = [
   "January", "February", "March", "April", "May", "June",
@@ -689,6 +689,92 @@ export default function TeacherClassesScreen() {
               portalTarget
             )}
           </>
+        ) : viewMode === "homework_history" ? (
+          <>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Homework History</p>
+                <p className="text-sm font-black text-gray-900 mt-1">
+                  {selectedClass.name} — {selectedClass.section}
+                </p>
+              </div>
+              <button
+                onClick={() => setViewMode("manage")}
+                className="px-4 py-2 bg-white border border-gray-100 rounded-2xl text-xs font-black text-gray-600 hover:border-indigo-100 hover:text-indigo-600 transition-all"
+              >
+                Back
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {(() => {
+                const classHomework = homework.filter(h => 
+                  h.classId === selectedClass.id && 
+                  h.createdBy === teacher.id
+                ).sort((a, b) => new Date(b.createdAt.seconds * 1000).getTime() - new Date(a.createdAt.seconds * 1000).getTime());
+
+                if (classHomework.length === 0) {
+                  return (
+                    <div className="bg-white border border-dashed border-gray-200 rounded-[32px] p-16 text-center">
+                      <BookOpen className="w-10 h-10 text-gray-200 mx-auto mb-3" />
+                      <p className="font-black text-gray-900">No homework assigned yet</p>
+                      <p className="text-sm text-gray-400 mt-1">Start by assigning your first homework task</p>
+                    </div>
+                  );
+                }
+
+                return classHomework.map(hw => {
+                  const isOverdue = new Date(hw.dueDate) < new Date(new Date().toISOString().split('T')[0]);
+                  const isToday = hw.dueDate === new Date().toISOString().split('T')[0];
+                  
+                  return (
+                    <div key={hw.id} className="bg-white rounded-[24px] p-5 border border-gray-100 shadow-sm">
+                      <div className="flex items-start gap-4">
+                        <div 
+                          className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-black text-lg shrink-0"
+                          style={{ backgroundColor: hw.color }}
+                        >
+                          {hw.subject.charAt(0)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between mb-2">
+                            <div>
+                              <h4 className="text-lg font-black text-gray-900">{hw.subject}</h4>
+                              <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mt-0.5">
+                                Assigned: {hw.issueDate}
+                              </p>
+                            </div>
+                            <div className={`px-3 py-1 rounded-full text-[10px] font-black ${
+                              hw.priority === 'High' ? 'bg-rose-100 text-rose-700' :
+                              hw.priority === 'Medium' ? 'bg-amber-100 text-amber-700' :
+                              'bg-emerald-100 text-emerald-700'
+                            }`}>
+                              {hw.priority}
+                            </div>
+                          </div>
+                          
+                          <p className="text-sm text-gray-700 mb-3 leading-relaxed">{hw.task}</p>
+                          
+                          <div className="flex items-center gap-4">
+                            <div className={`flex items-center gap-1.5 ${
+                              isOverdue ? 'text-rose-600' : isToday ? 'text-amber-600' : 'text-gray-500'
+                            }`}>
+                              <Calendar className="w-4 h-4" />
+                              <span className="text-[11px] font-black">
+                                Due: {hw.dueDate}
+                                {isOverdue && ' (Overdue)'}
+                                {isToday && ' (Today)'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          </>
         ) : (
           <>
             {/* Action Cards Grid */}
@@ -727,6 +813,18 @@ export default function TeacherClassesScreen() {
                 <div>
                   <p className="text-sm font-black">Attendance History</p>
                   <p className="text-[10px] text-white/70 mt-0.5">Calendar view</p>
+                </div>
+              </button>
+              <button
+                onClick={() => setViewMode("homework_history")}
+                className="bg-sky-600 text-white p-5 lg:p-4 rounded-[28px] lg:rounded-xl flex flex-col gap-3 lg:gap-2 active:scale-95 transition-transform shadow-lg shadow-sky-200 text-left"
+              >
+                <div className="bg-white/20 w-10 h-10 lg:w-8 lg:h-8 rounded-xl flex items-center justify-center">
+                  <BookOpen className="w-5 h-5 lg:w-4 lg:h-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-black">Homework History</p>
+                  <p className="text-[10px] text-white/70 mt-0.5">View all homework</p>
                 </div>
               </button>
               <button

@@ -16,12 +16,14 @@ export default function TeacherDetailScreen() {
     usersList,
     updateUserProfile,
     updateTeacherClasses,
+    setTeacherAsClassTeacher,
     showAlert,
     showConfirm
   } = useApp();
   
   const [isEditingDetails, setIsEditingDetails] = useState(false);
   const [isManagingClasses, setIsManagingClasses] = useState(false);
+  const [isManagingClassTeacher, setIsManagingClassTeacher] = useState(false);
   const [detailsForm, setDetailsForm] = useState({
     phone: "",
     password: "",
@@ -32,6 +34,7 @@ export default function TeacherDetailScreen() {
   });
 
   const teacherClasses = classes.filter(c => selectedTeacher?.classIds?.includes(c.id));
+  const classTeacherClasses = classes.filter((c) => (c.classTeacherId || "").trim() === selectedTeacher?.id);
   const teacherStudents = students.filter(s => selectedTeacher?.classIds?.includes(s.classId));
   const teacherHomework = homework.filter(h => selectedTeacher?.id === h.createdBy);
   const teacherAttendance = attendance.filter(a => selectedTeacher?.id === a.markedBy);
@@ -86,6 +89,26 @@ export default function TeacherDetailScreen() {
       });
       showAlert("Success", "Teacher details updated successfully", "success");
       setIsEditingDetails(false);
+    } catch (error: any) {
+      showAlert("Error", error.message, "error");
+    }
+  };
+
+  const handleClassTeacherAssignment = async (classId: string, assign: boolean) => {
+    try {
+      const current = selectedTeacher.classTeacherClassIds || [];
+      const next = assign
+        ? Array.from(new Set([...current, classId]))
+        : current.filter((id) => id !== classId);
+
+      await setTeacherAsClassTeacher(selectedTeacher.id, next);
+
+      setSelectedTeacher({
+        ...selectedTeacher,
+        classTeacherClassIds: next,
+      });
+
+      showAlert("Success", `Class teacher assignment ${assign ? "added" : "removed"}.`, "success");
     } catch (error: any) {
       showAlert("Error", error.message, "error");
     }
@@ -314,6 +337,71 @@ export default function TeacherDetailScreen() {
                 </p>
               </div>
             </div>
+          </div>
+        )}
+      </div>
+
+      {/* Assign as Class Teacher */}
+      <div className="bg-white rounded-[32px] p-6 mb-6 shadow-sm border border-gray-100">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-black text-gray-900">Assign as Class Teacher</h3>
+          <button
+            onClick={() => setIsManagingClassTeacher(!isManagingClassTeacher)}
+            className="text-indigo-600 text-sm font-medium"
+          >
+            {isManagingClassTeacher ? "Done" : "Manage"}
+          </button>
+        </div>
+
+        {isManagingClassTeacher ? (
+          <div>
+            <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto p-2 bg-gray-50 rounded-2xl no-scrollbar">
+              {classes.map((c) => {
+                const isAssigned = (selectedTeacher.classTeacherClassIds || []).includes(c.id);
+                return (
+                  <button
+                    key={c.id}
+                    onClick={() => handleClassTeacherAssignment(c.id, !isAssigned)}
+                    className={`px-3 py-3 rounded-xl text-[10px] font-bold transition-all border ${
+                      isAssigned
+                        ? "bg-emerald-600 border-emerald-600 text-white"
+                        : "bg-white border-gray-100 text-gray-400"
+                    }`}
+                  >
+                    {c.name}-{c.section}
+                  </button>
+                );
+              })}
+              {classes.length === 0 && (
+                <p className="col-span-2 text-center py-4 text-[10px] text-gray-400 italic">No classes available</p>
+              )}
+            </div>
+            <div className="mt-4 text-center">
+              <p className="text-[10px] text-gray-400">
+                {(selectedTeacher.classTeacherClassIds?.length || 0)} classes assigned as class teacher
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {classTeacherClasses.map((classItem) => (
+              <div key={classItem.id} className="flex items-center justify-between p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
+                <div>
+                  <p className="text-sm font-bold text-gray-900">{classItem.name}-{classItem.section}</p>
+                  <p className="text-[10px] text-emerald-700 font-black uppercase tracking-widest mt-1">Class Teacher</p>
+                </div>
+                <div className="w-12 h-12 bg-emerald-600 text-white rounded-2xl flex items-center justify-center">
+                  <Check className="w-5 h-5" />
+                </div>
+              </div>
+            ))}
+
+            {classTeacherClasses.length === 0 && (
+              <div className="text-center py-8">
+                <p className="text-gray-400 text-sm">Not assigned as class teacher</p>
+                <p className="text-gray-300 text-[10px] mt-1">Click "Manage" to assign classes</p>
+              </div>
+            )}
           </div>
         )}
       </div>
