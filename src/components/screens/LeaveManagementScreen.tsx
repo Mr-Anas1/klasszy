@@ -39,7 +39,11 @@ export default function LeaveManagementScreen() {
 
   const today = useMemo(() => getLocalISODate(new Date()), []);
   const [tab, setTab] = useState<ParentTab>("pending");
-  const [form, setForm] = useState<{ date: ISODateString; reason: string }>({ date: today, reason: "" });
+  const [form, setForm] = useState<{ fromDate: ISODateString; toDate: ISODateString; reason: string }>({
+    fromDate: today,
+    toDate: today,
+    reason: "",
+  });
   const [submitting, setSubmitting] = useState(false);
 
   const myStudents = useMemo(() => students.filter((s) => s.parentId === user?.id), [students, user?.id]);
@@ -72,19 +76,23 @@ export default function LeaveManagementScreen() {
       showAlert("Error", "No student linked to this account.", "error");
       return;
     }
-    if (!form.date || !form.reason.trim()) {
-      showAlert("Missing Info", "Please select a date and enter a reason.", "error");
+    if (!form.fromDate || !form.toDate || !form.reason.trim()) {
+      showAlert("Missing Info", "Please select from/to dates and enter a reason.", "error");
+      return;
+    }
+    if (form.toDate < form.fromDate) {
+      showAlert("Invalid Range", "To date cannot be before from date.", "error");
       return;
     }
     setSubmitting(true);
     try {
       await applyLeave({
         studentId: currentStudent.id,
-        fromDate: form.date,
-        toDate: form.date,
+        fromDate: form.fromDate,
+        toDate: form.toDate,
         reason: form.reason.trim(),
       });
-      setForm({ date: today, reason: "" });
+      setForm({ fromDate: today, toDate: today, reason: "" });
       showAlert("Submitted", "Leave application submitted to teacher.", "success");
       setTab("pending");
     } finally {
@@ -308,24 +316,41 @@ export default function LeaveManagementScreen() {
         <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4">Apply Leave</p>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1 ml-2 block">Date</label>
+            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1 ml-2 block">From Date</label>
             <input
               type="date"
-              value={form.date}
-              onChange={(e) => setForm((p) => ({ ...p, date: e.target.value as ISODateString }))}
+              value={form.fromDate}
+              onChange={(e) => {
+                const next = e.target.value as ISODateString;
+                setForm((p) => ({
+                  ...p,
+                  fromDate: next,
+                  toDate: p.toDate < next ? next : p.toDate,
+                }));
+              }}
               className="w-full bg-gray-50 border-2 border-transparent focus:border-indigo-100 rounded-2xl px-4 py-3 text-sm font-bold focus:outline-none transition-all"
             />
           </div>
-          <div className="flex items-end">
-            <button
-              type="button"
-              onClick={submit}
-              disabled={submitting}
-              className="w-full bg-indigo-600 text-white font-black py-3.5 rounded-2xl text-[11px] uppercase tracking-widest shadow-lg shadow-indigo-100 active:scale-95 transition-transform disabled:opacity-60"
-            >
-              {submitting ? "Submitting…" : "Submit"}
-            </button>
+          <div>
+            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1 ml-2 block">To Date</label>
+            <input
+              type="date"
+              value={form.toDate}
+              min={form.fromDate}
+              onChange={(e) => setForm((p) => ({ ...p, toDate: e.target.value as ISODateString }))}
+              className="w-full bg-gray-50 border-2 border-transparent focus:border-indigo-100 rounded-2xl px-4 py-3 text-sm font-bold focus:outline-none transition-all"
+            />
           </div>
+        </div>
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={submit}
+            disabled={submitting}
+            className="w-full bg-indigo-600 text-white font-black py-3.5 rounded-2xl text-[11px] uppercase tracking-widest shadow-lg shadow-indigo-100 active:scale-95 transition-transform disabled:opacity-60"
+          >
+            {submitting ? "Submitting…" : "Submit"}
+          </button>
         </div>
         <div className="mt-3">
           <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1 ml-2 block">Reason</label>
@@ -358,7 +383,7 @@ export default function LeaveManagementScreen() {
                   active ? "bg-gray-900 text-white shadow-md" : "bg-transparent text-gray-600 hover:bg-gray-50"
                 }`}
               >
-                <div className="flex min-w-0 items-center justify-center gap-1.5 sm:gap-2">
+                <div className="flex  min-w-0 items-center justify-center gap-1.5 sm:gap-2">
                   <t.Icon className={`h-4 w-4 ${active ? "text-white/80" : "text-gray-400"}`} />
                   <span className="min-w-0 truncate text-[10px] font-black uppercase tracking-widest">{t.label}</span>
                   <span

@@ -4,7 +4,7 @@ import React, { useMemo, useState } from "react";
 import { CheckCircle2, Clock, Calendar, BookOpen } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { Timestamp } from "firebase/firestore";
-import { getLocalISODate, isExpiredAfter, type ISODateString } from "@/lib/date-window";
+import { getLocalISODate, isExpiredAfter, isISODateOnOrAfter, isISODateOnOrBefore, type ISODateString } from "@/lib/date-window";
 
 type HomeworkFilter = "total" | "pending" | "completed";
 
@@ -16,7 +16,11 @@ export default function DiaryScreen() {
 
   const today = useMemo(() => getLocalISODate(new Date()), []);
   const entriesForDate = useMemo(
-    () => diaryEntries.filter((d) => d.dueDate === selectedDate),
+    () =>
+      diaryEntries.filter((d) => {
+        const issue = ((d as any).issueDate || d.dueDate) as string;
+        return isISODateOnOrAfter(selectedDate, issue) && isISODateOnOrBefore(selectedDate, d.dueDate);
+      }),
     [diaryEntries, selectedDate]
   );
 
@@ -53,7 +57,7 @@ export default function DiaryScreen() {
 
       {/* Filters */}
       <div className="mb-8">
-        <div className="bg-white border border-gray-100 rounded-3xl p-2 shadow-sm flex gap-2">
+        <div className="bg-white border border-gray-100 rounded-3xl p-2 shadow-sm flex gap-2 flex-wrap">
           {(
             [
               { id: "total", label: "Total", count: counts.total },
