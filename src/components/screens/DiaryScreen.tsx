@@ -4,7 +4,7 @@ import React, { useMemo, useState } from "react";
 import { CheckCircle2, Clock, Calendar, BookOpen } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { Timestamp } from "firebase/firestore";
-import { getLocalISODate, isExpiredAfter } from "@/lib/date-window";
+import { getLocalISODate, isExpiredAfter, type ISODateString } from "@/lib/date-window";
 
 type HomeworkFilter = "total" | "pending" | "completed";
 
@@ -46,7 +46,7 @@ export default function DiaryScreen() {
         <input
           type="date"
           value={selectedDate}
-          onChange={e => setSelectedDate(e.target.value)}
+          onChange={e => setSelectedDate(e.target.value as `${number}-${number}-${number}`)}
           className="px-4 py-2 rounded-xl bg-gray-900 text-white text-[11px] font-bold uppercase tracking-widest active:scale-95 border-0 focus:outline-none focus:ring-2 focus:ring-indigo-300"
         />
       </div>

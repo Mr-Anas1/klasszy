@@ -1,4 +1,4 @@
-package com.klasszy.app;
+package com.klasszy.spmapp;
 
 import com.getcapacitor.BridgeActivity;
 

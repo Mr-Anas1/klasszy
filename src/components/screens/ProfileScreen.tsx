@@ -11,16 +11,22 @@ import {
   HelpCircle,
   School as SchoolIcon,
   Edit3,
+  FileText,
+  Trash2,
 } from "lucide-react";
 import { useApp, StudentPersonalDetails } from "@/context/AppContext";
+import { useRouter } from "next/navigation";
 
 export default function ProfileScreen() {
   const { user, school, logout, students, studentDetails, classes } = useApp();
+  const router = useRouter();
   if (!user) return null;
 
   const MENU_ITEMS = [
     { icon: Bell, label: "Notifications", sub: "Manage alerts" },
     { icon: Shield, label: "Privacy & Security", sub: "Change password" },
+    { icon: FileText, label: "Privacy Policy", sub: "View privacy policy" },
+    { icon: Trash2, label: "Account Deletion", sub: "Request data removal" },
     { icon: HelpCircle, label: "Help & Support", sub: "FAQ, contact us" },
   ];
 
@@ -192,9 +198,19 @@ export default function ProfileScreen() {
       <div className="animate-fade-slide-up delay-200 mt-4 bg-white rounded-[28px] border border-gray-100 overflow-hidden shadow-sm">
         {MENU_ITEMS.map((item, i) => {
           const Icon = item.icon;
+          const handleMenuClick = () => {
+            if (item.label === "Privacy Policy") {
+              router.push("/privacy");
+            } else if (item.label === "Account Deletion") {
+              router.push("/delete-account");
+            }
+            // Add other menu item handlers here as needed
+          };
+
           return (
             <button
               key={i}
+              onClick={handleMenuClick}
               className="w-full flex items-center gap-4 px-6 py-4 text-left active:bg-gray-50 transition-colors border-b border-gray-50 last:border-0"
             >
               <div className="w-10 h-10 bg-gray-50 rounded-2xl flex items-center justify-center shrink-0">

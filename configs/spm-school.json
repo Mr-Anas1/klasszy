@@ -1,6 +1,6 @@
 {
     "appName": "SPM School",
-    "packageName": "com.klasszy.spm",
+    "packageName": "com.klasszy.spmapp",
     "schoolId": "spm_school",
     "schoolCode": "SCH003",
     "themeColor": "#4CAF50",

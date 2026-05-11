@@ -45,7 +45,8 @@ export default function StudentDetailScreen() {
   const [newStudentForm, setNewStudentForm] = useState({
     name: "",
     username: "",
-    password: ""
+    password: "",
+    gender: "male" as "male" | "female"
   });
   const [isEditingCredentials, setIsEditingCredentials] = useState(false);
   const [credentialsForm, setCredentialsForm] = useState({
@@ -230,10 +231,11 @@ export default function StudentDetailScreen() {
         name: newStudentForm.name.trim(),
         classId: targetClassId,
         username: newStudentForm.username.trim() || newStudentForm.name.toLowerCase().replace(/\s+/g, ''),
-        password: newStudentForm.password || 'password123'
+        password: newStudentForm.password || 'password123',
+        gender: newStudentForm.gender
       });
       
-      setNewStudentForm({ name: '', username: '', password: '' });
+      setNewStudentForm({ name: '', username: '', password: '', gender: 'male' });
       setIsAddingStudent(false);
       setSelectedStudent(null);
       setActiveTab(studentDetailReturnTab || 'manage_classes');
@@ -289,6 +291,34 @@ export default function StudentDetailScreen() {
                   placeholder="Enter student name"
                   autoFocus
                 />
+              </div>
+              
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">Gender</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setNewStudentForm({ ...newStudentForm, gender: 'male' })}
+                    className={`py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                      newStudentForm.gender === 'male'
+                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    Male
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewStudentForm({ ...newStudentForm, gender: 'female' })}
+                    className={`py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                      newStudentForm.gender === 'female'
+                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    Female
+                  </button>
+                </div>
               </div>
               
               <div>

@@ -4,7 +4,7 @@ android {
     namespace = "com.klasszy.app"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.klasszy.app"
+        applicationId "com.klasszy.spmapp"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

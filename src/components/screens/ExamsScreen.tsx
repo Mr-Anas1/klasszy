@@ -6,7 +6,7 @@ import { CalendarClock, FileText, Plus, X, Paperclip, Loader2, Trash2 } from "lu
 import { useApp, Exam } from "@/context/AppContext";
 import FileAttachmentPreview from "@/components/ui/FileAttachmentPreview";
 import { attachmentTypeFromFile, isCloudinaryConfigured, uploadToCloudinary } from "@/lib/cloudinary";
-import { getLocalISODate, isActiveBetween, isExpiredAfter } from "@/lib/date-window";
+import { getLocalISODate, isActiveBetween, isExpiredAfter, type ISODateString } from "@/lib/date-window";
 
 type Tab = "upcoming" | "active" | "previous";
 
@@ -209,7 +209,7 @@ export default function ExamsScreen() {
                   <input
                     type="date"
                     value={data.fromDate}
-                    onChange={(e) => setData((p) => ({ ...p, fromDate: e.target.value }))}
+                    onChange={(e) => setData((p) => ({ ...p, fromDate: e.target.value as ISODateString }))}
                     className="w-full rounded-2xl bg-gray-50 px-5 py-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-indigo-200"
                   />
                 </div>
@@ -218,7 +218,7 @@ export default function ExamsScreen() {
                   <input
                     type="date"
                     value={data.toDate}
-                    onChange={(e) => setData((p) => ({ ...p, toDate: e.target.value }))}
+                    onChange={(e) => setData((p) => ({ ...p, toDate: e.target.value as ISODateString }))}
                     className="w-full rounded-2xl bg-gray-50 px-5 py-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-indigo-200"
                   />
                 </div>
