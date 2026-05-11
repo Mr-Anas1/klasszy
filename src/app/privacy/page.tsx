@@ -8,21 +8,6 @@ export default function PrivacyPolicyPage() {
   const schoolName = "Klasszy";
   const effectiveDateLabel = "May 11, 2026";
 
-  const scrollToSection = (id: string) => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    
-    // Offset for the sticky header
-    const offset = 120; 
-    const elementPosition = el.getBoundingClientRect().top;
-    const offsetPosition = elementPosition + window.pageYOffset - offset;
-
-    window.scrollTo({
-      top: offsetPosition,
-      behavior: "smooth"
-    });
-  };
-
   return (
     <div className="min-h-screen bg-[#F8FAFC] selection:bg-indigo-100">
       {/* 1. STICKY HEADER - High Z-Index & Glassmorphism */}
@@ -50,13 +35,13 @@ export default function PrivacyPolicyPage() {
               { id: "security", label: "Security" },
               { id: "contact", label: "Contact" }
             ].map((item) => (
-              <button
+              <a
                 key={item.id}
-                onClick={() => scrollToSection(item.id)}
+                href={`#${item.id}`}
                 className="whitespace-nowrap px-4 py-1.5 rounded-full text-xs font-bold transition-all border bg-white border-slate-200 text-slate-600 hover:border-slate-300"
               >
                 {item.label}
-              </button>
+              </a>
             ))}
           </div>
         </div>
