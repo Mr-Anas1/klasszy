@@ -4,7 +4,7 @@
     "schoolId": "spm_school",
     "schoolCode": "SCH003",
     "themeColor": "#4CAF50",
-    "logo": "/next.svg",
+    "logo": "/images/Klasszy-logo.png",
     "features": {
         "attendance": true,
         "homework": true,

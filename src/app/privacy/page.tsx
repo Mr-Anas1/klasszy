@@ -1,18 +1,12 @@
-"use client";
-
-import React, { useState } from "react";
+import React from "react";
 import { 
-  ArrowLeft, Shield, Lock, Database, Globe, Mail, 
-  FileText, UploadCloud, Smartphone, Users, RefreshCw, 
-  CheckCircle2 
+  Shield, Lock, Database, Globe, Mail, 
+  FileText, Smartphone, CheckCircle2 
 } from "lucide-react";
-import { useRouter } from "next/navigation";
 
 export default function PrivacyPolicyPage() {
-  const router = useRouter();
   const schoolName = "Klasszy";
   const effectiveDateLabel = "May 11, 2026";
-  const [activeSection, setActiveSection] = useState("");
 
   const scrollToSection = (id: string) => {
     const el = document.getElementById(id);
@@ -27,22 +21,15 @@ export default function PrivacyPolicyPage() {
       top: offsetPosition,
       behavior: "smooth"
     });
-    setActiveSection(id);
   };
 
   return (
-    <div className="h-[100dvh] flex flex-col bg-[#F8FAFC] selection:bg-indigo-100">
+    <div className="min-h-screen bg-[#F8FAFC] selection:bg-indigo-100">
       {/* 1. STICKY HEADER - High Z-Index & Glassmorphism */}
-      <header className="sticky top-0 z-50 w-full shrink-0 bg-white/90 backdrop-blur-md border-b border-slate-200/60 shadow-sm">
+      <header className="sticky top-0 z-50 w-full bg-white/90 backdrop-blur-md border-b border-slate-200/60 shadow-sm">
         <div className="max-w-3xl mx-auto px-5 py-3">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-4">
-              <button
-                onClick={() => router.back()}
-                className="group p-2.5 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all active:scale-90"
-              >
-                <ArrowLeft className="w-5 h-5 text-slate-600 group-hover:text-slate-900" />
-              </button>
               <div>
                 <h1 className="text-base font-bold text-slate-900">Privacy Policy</h1>
                 <p className="text-[11px] text-slate-500 font-medium">Effective: {effectiveDateLabel}</p>
@@ -66,11 +53,7 @@ export default function PrivacyPolicyPage() {
               <button
                 key={item.id}
                 onClick={() => scrollToSection(item.id)}
-                className={`whitespace-nowrap px-4 py-1.5 rounded-full text-xs font-bold transition-all border ${
-                  activeSection === item.id 
-                  ? "bg-slate-900 border-slate-900 text-white" 
-                  : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
-                }`}
+                className="whitespace-nowrap px-4 py-1.5 rounded-full text-xs font-bold transition-all border bg-white border-slate-200 text-slate-600 hover:border-slate-300"
               >
                 {item.label}
               </button>
@@ -79,8 +62,8 @@ export default function PrivacyPolicyPage() {
         </div>
       </header>
 
-      {/* 2. MAIN CONTENT - No 'overflow-y-auto' here to fix scrolling */}
-      <main className="flex-1 overflow-y-auto max-w-3xl mx-auto w-full px-5 py-8 space-y-8">
+      {/* 2. MAIN CONTENT */}
+      <main className="max-w-3xl mx-auto px-5 py-8 space-y-8">
         
         {/* Hero Card */}
         <div className="relative overflow-hidden bg-slate-900 rounded-[32px] p-8 shadow-2xl shadow-slate-200">

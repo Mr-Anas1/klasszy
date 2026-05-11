@@ -1,7 +1,7 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace = "com.klasszy.app"
+    namespace = "com.klasszy.spmapp"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
         applicationId "com.klasszy.spmapp"
