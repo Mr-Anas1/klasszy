@@ -6,7 +6,12 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true
   },
-  assetPrefix: process.env.NODE_ENV === 'production' ? '.' : undefined,
+  assetPrefix:
+    process.env.VERCEL
+      ? undefined
+      : process.env.NODE_ENV === 'production'
+        ? '.'
+        : undefined,
 };
 
 export default nextConfig;
