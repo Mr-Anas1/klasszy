@@ -92,7 +92,7 @@ export default function ExamsScreen() {
 
       {/* Tabs */}
       <div className="mb-6">
-        <div className="bg-white border border-gray-100 rounded-3xl p-2 shadow-sm flex gap-2">
+        <div className="bg-white border border-gray-100 rounded-3xl p-2 shadow-sm flex flex-wrap gap-2">
           {(
             [
               { id: "upcoming", label: "Upcoming", count: upcoming.length },
